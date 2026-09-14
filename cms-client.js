@@ -100,6 +100,7 @@ function paint() {
 }
 async function render() {
   const turn=++cms.generation, route=currentRoute(),admin=route.startsWith('/admin');
+  document.body.classList.toggle('detail-route',route.startsWith('/bien/'));
   cms.dirty=false;
   app.classList.remove('cms-reveal');
   app.innerHTML=loadingScreen(route,admin);

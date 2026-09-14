@@ -118,6 +118,14 @@ test('loading UI uses listing-card skeletons while error and empty states remain
   assert.match(client,/No matching properties/);
   assert.match(client,/Aucun bien en vedette actuellement/);
 });
+test('property detail route applies contrast-safe navigation and content colors',async()=>{
+  const client=await readFile(new URL('../cms-client.js',import.meta.url),'utf8');
+  const css=await readFile(new URL('../styles.css',import.meta.url),'utf8');
+  assert.match(client,/classList\.toggle\('detail-route',route\.startsWith\('\/bien\/'\)\)/);
+  for(const selector of ['.detail-route .topbar','.detail-route .topbar .navlinks a','.detail-route .detail .crumbs','.detail-route .detail-title h1','.detail-route .detail-title p'])assert.match(css,new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+  assert.match(css,/:root\[data-theme="dark"\] \.detail-route \.detail\{background:#091521/);
+  assert.doesNotMatch(css,/\.detail-route[^\n]*linear-gradient/);
+});
 test('SQL enables RLS and keeps admin provisioning owner-only',async()=>{
   const sql=await readFile(new URL('../supabase/migrations/001_cms.sql',import.meta.url),'utf8');
   assert.match(sql,/alter table public.properties enable row level security/);

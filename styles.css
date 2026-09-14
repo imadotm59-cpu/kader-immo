@@ -103,3 +103,33 @@ button:disabled{opacity:.55;cursor:wait}button:focus-visible,a:focus-visible,inp
 @media(max-width:700px){.skeleton-property-body{min-height:143px}.skeleton-detail-name{height:42px;width:88%}.skeleton-detail-price{width:145px}.skeleton-detail-gallery{grid-template-columns:1fr 1fr;grid-template-rows:135px 135px}.cms-admin-loading .skeleton-property-grid{grid-template-columns:1fr}.cms-admin-loading .skeleton-property-grid .skeleton-property-card:not(:first-child){display:none}.skeleton-admin-kpis{grid-template-columns:1fr 1fr}.skeleton-admin-kpi{height:105px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
 .cms-confirm{display:flex;justify-content:flex-end;gap:12px;margin-top:24px}.cms-confirm button{padding:10px 20px;border-radius:8px;border:1px solid #cbd5e1}
+
+/* Property detail contrast: its header sits on a solid surface, unlike image-backed pages. */
+.detail-route .topbar{background:rgba(255,255,255,.96);border-bottom-color:#d7e0e7;color:var(--navy);box-shadow:0 1px 0 rgba(3,27,49,.05);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.detail-route .topbar .logo{color:var(--navy)}
+.detail-route .topbar .logo small{color:#526577}
+.detail-route .topbar .navlinks a{color:#334e65}
+.detail-route .topbar .navlinks a:hover,.detail-route .topbar .navlinks a.active{color:var(--navy)}
+.detail-route .topbar .header-phone{color:var(--navy);border-color:#a87428}
+.detail-route .topbar .hamburger{color:var(--navy)}
+.detail-route .topbar .site-controls button{background:#f3f6f8;border-color:#9dadba;color:var(--navy)}
+.detail-route .topbar .site-controls button:hover{background:#fff4df;border-color:#a87428}
+.detail-route .detail .crumbs{color:#526273}
+.detail-route .detail .crumbs a{color:#153b5d;font-weight:700}
+.detail-route .detail .eyebrow{color:#855716}
+.detail-route .detail-title h1,.detail-route .detail-price{color:var(--navy)}
+.detail-route .detail-title p{color:#46596a}
+.detail-route .detail-price small{color:#526273!important}
+
+:root[data-theme="dark"] .detail-route .topbar{background:rgba(6,27,49,.97);border-bottom-color:#29445d;color:#f7fafc;box-shadow:0 1px 0 rgba(255,255,255,.04)}
+:root[data-theme="dark"] .detail-route .topbar .logo,:root[data-theme="dark"] .detail-route .topbar .navlinks a,:root[data-theme="dark"] .detail-route .topbar .header-phone,:root[data-theme="dark"] .detail-route .topbar .hamburger{color:#edf4f8}
+:root[data-theme="dark"] .detail-route .topbar .logo small{color:#c4d2de}
+:root[data-theme="dark"] .detail-route .topbar .navlinks a:hover,:root[data-theme="dark"] .detail-route .topbar .navlinks a.active{color:#fff}
+:root[data-theme="dark"] .detail-route .topbar .site-controls button{background:#102c45;border-color:#698096;color:#fff}
+:root[data-theme="dark"] .detail-route .topbar .site-controls button:hover{background:#183a57;border-color:var(--gold)}
+:root[data-theme="dark"] .detail-route .detail{background:#091521;color:#edf4f8}
+:root[data-theme="dark"] .detail-route .detail .crumbs{color:#b8c8d5}
+:root[data-theme="dark"] .detail-route .detail .crumbs a{color:#f0c875}
+:root[data-theme="dark"] .detail-route .detail .eyebrow{color:#efc579}
+:root[data-theme="dark"] .detail-route .detail-title h1,:root[data-theme="dark"] .detail-route .detail-price{color:#fff}
+:root[data-theme="dark"] .detail-route .detail-title p,:root[data-theme="dark"] .detail-route .detail-price small{color:#c6d4df!important}
