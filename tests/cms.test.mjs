@@ -107,8 +107,12 @@ test('frontend contains no demo password, token storage or listing localStorage 
 test('loading UI uses listing-card skeletons while error and empty states remain explicit',async()=>{
   const client=(await readFile(new URL('../cms-client.js',import.meta.url),'utf8'))+(await readFile(new URL('../app.js',import.meta.url),'utf8'));
   const css=await readFile(new URL('../styles.css',import.meta.url),'utf8');
-  assert.doesNotMatch(client,/<p>Chargement…<\/p>/);
+  assert.doesNotMatch(client,/Chargement|cms-skeleton-screen/);
   for(const part of ['skeleton-property-image','skeleton-title','skeleton-price','skeleton-location','skeleton-details'])assert.match(client,new RegExp(part));
+  assert.match(client,/route === '\/'\) return home\(true\)/);
+  assert.match(client,/route === '\/biens'\) return listings\(true\)/);
+  assert.match(client,/bindLoadingChrome\(\)/);
+  assert.doesNotMatch(css,/cms-skeleton-screen|min-height:100svh[^}]*skeleton/);
   assert.match(css,/@keyframes cms-shimmer/);assert.match(css,/prefers-reduced-motion/);
   assert.match(client,/Les biens sont temporairement indisponibles/);
   assert.match(client,/No matching properties/);

@@ -14,35 +14,48 @@ function descriptionHtml(escaped) {
 function displayDate(value) { return value && !Number.isNaN(Date.parse(value)) ? new Date(value).toLocaleDateString('fr-DZ') : '—'; }
 function currentRoute() { return location.hash.startsWith('#/') ? location.hash.slice(1) : /^\/admin(?:\/|$)/.test(location.pathname) ? location.pathname : '/'; }
 function navigate(path) { if(currentRoute()===path) render(); else location.hash='#'+path; }
-function loadingScreen(admin) {
-  const card = () => `<article class="skeleton-property-card" aria-hidden="true">
-    <div class="skeleton skeleton-property-image"></div>
-    <div class="skeleton-property-body">
+function propertySkeletonCards(count = 3) {
+  const card = `<article class="card skeleton-property-card" aria-hidden="true">
+    <div class="card-photo skeleton skeleton-property-image"></div>
+    <div class="card-body skeleton-property-body">
       <div class="skeleton skeleton-type"></div>
       <div class="skeleton skeleton-title"></div>
       <div class="skeleton skeleton-location"></div>
-      <div class="skeleton-property-meta">
+      <div class="meta skeleton-property-meta">
         <div class="skeleton skeleton-price"></div>
         <div class="skeleton skeleton-details"></div>
       </div>
     </div>
   </article>`;
-  return `${admin?'':header()}<main class="cms-skeleton-screen ${admin?'cms-skeleton-admin':''}" role="status" aria-live="polite" aria-label="Chargement des propriétés">
-    <span class="sr-only">Chargement des propriétés…</span>
+  return card.repeat(count);
+}
+function detailLoading() {
+  return `${header()}<main id="content" class="detail cms-detail-skeleton" aria-busy="true">
+    <span class="sr-only">Les informations du bien sont en cours de mise à jour.</span>
     <div class="shell">
-      <div class="skeleton-heading" aria-hidden="true">
-        <div class="skeleton skeleton-kicker"></div>
-        <div class="skeleton skeleton-page-title"></div>
-        <div class="skeleton skeleton-page-copy"></div>
-      </div>
-      <div class="skeleton-toolbar" aria-hidden="true">
-        <div class="skeleton skeleton-search"></div>
-        <div class="skeleton skeleton-filter-pill"></div>
-        <div class="skeleton skeleton-filter-pill"></div>
-      </div>
-      <section class="skeleton-property-grid" aria-hidden="true">${card()}${card()}${card()}</section>
+      <p class="crumbs"><a href="#/biens">Biens disponibles</a></p>
+      <div class="detail-title" aria-hidden="true"><div class="skeleton-detail-heading"><div class="skeleton skeleton-type"></div><div class="skeleton skeleton-detail-name"></div><div class="skeleton skeleton-location"></div></div><div class="skeleton skeleton-detail-price"></div></div>
+      <section class="skeleton-detail-gallery" aria-hidden="true"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></section>
+      <section class="detail-grid" aria-hidden="true"><div class="skeleton-detail-copy"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div><div class="form-card"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-form-field"></div><div class="skeleton skeleton-form-field"></div></div></section>
     </div>
-  </main>`;
+  </main>${footer()}`;
+}
+function adminLoading(route) {
+  const section=route.replace('/admin','').split('/')[1] || 'dashboard';
+  return dashShell(section==='editor'?'add':section,`<div class="cms-admin-loading" aria-busy="true"><span class="sr-only">Les annonces sont en cours de mise à jour.</span><div class="skeleton skeleton-admin-title" aria-hidden="true"></div><div class="skeleton-admin-kpis" aria-hidden="true">${'<div class="skeleton skeleton-admin-kpi"></div>'.repeat(4)}</div><div class="skeleton-property-grid">${propertySkeletonCards()}</div></div>`);
+}
+function loadingScreen(route, admin) {
+  if (admin) return adminLoading(route);
+  if (route === '/') return home(true);
+  if (route === '/biens') return listings(true);
+  if (route.startsWith('/bien/')) return detailLoading();
+  return `${header()}<main id="content"></main>${footer()}`;
+}
+function bindLoadingChrome() {
+  bindGlobal();
+  $('#dash-theme')?.addEventListener('click',()=>{localStorage.setItem('kader-theme',getTheme()==='dark'?'light':'dark');applyPreferences();});
+  $('.drawer-toggle')?.addEventListener('click',()=>$('#dash-sidebar')?.classList.add('open'));
+  $('.close-drawer')?.addEventListener('click',()=>$('#dash-sidebar')?.classList.remove('open'));
 }
 function revealContent() {
   app.classList.remove('cms-reveal');
@@ -89,8 +102,8 @@ async function render() {
   const turn=++cms.generation, route=currentRoute(),admin=route.startsWith('/admin');
   cms.dirty=false;
   app.classList.remove('cms-reveal');
-  app.innerHTML=loadingScreen(admin);
-  applyPreferences();
+  app.innerHTML=loadingScreen(route,admin);
+  applyPreferences();bindLoadingChrome();
   try {
     if(!admin && ['/contact','/agence','/services'].includes(route)){cms.items=[];paint();return;}
     if(admin){
