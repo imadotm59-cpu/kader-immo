@@ -1,0 +1,132 @@
+[
+  {
+    "id": 1,
+    "type": "Villa",
+    "title": "Villa Signature à Canastel",
+    "location": "Canastel, Oran",
+    "price": "65 000 000 DA",
+    "beds": 5,
+    "baths": 4,
+    "area": "480 m²",
+    "image": "https://images.unsplash.com/photo-1600607688969-a5bfcd646154?auto=format&fit=crop&w=1100&q=85",
+    "images": [
+      "https://images.unsplash.com/photo-1600607688969-a5bfcd646154?auto=format&fit=crop&w=1100&q=85",
+      "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1100&q=85",
+      "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=1100&q=85"
+    ],
+    "description": "Une résidence contemporaine remarquable à Canastel, pensée pour une vie familiale élégante. Espaces généreux, finitions choisies et jardin paysager avec piscine.",
+    "ref": "KIM-LEGACY-1",
+    "status": "Draft",
+    "published": false,
+    "featured": true,
+    "transaction": "Sale",
+    "currency": "DA"
+  },
+  {
+    "id": 2,
+    "type": "Duplex",
+    "title": "Duplex avec piscine privée",
+    "location": "Bir El Djir, Oran",
+    "price": "42 000 000 DA",
+    "beds": 4,
+    "baths": 3,
+    "area": "260 m²",
+    "image": "https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=1100&q=85",
+    "images": [
+      "https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=1100&q=85",
+      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1100&q=85",
+      "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1100&q=85"
+    ],
+    "description": "Un duplex lumineux aux lignes modernes, avec piscine, terrasses et prestations qui rendent chaque jour plus confortable.",
+    "ref": "KIM-LEGACY-2",
+    "status": "Draft",
+    "published": false,
+    "featured": true,
+    "transaction": "Sale",
+    "currency": "DA"
+  },
+  {
+    "id": 3,
+    "type": "Maison",
+    "title": "Maison d’architecte",
+    "location": "Gambetta, Oran",
+    "price": "38 500 000 DA",
+    "beds": 4,
+    "baths": 3,
+    "area": "315 m²",
+    "image": "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?auto=format&fit=crop&w=1100&q=85",
+    "images": [
+      "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?auto=format&fit=crop&w=1100&q=85"
+    ],
+    "description": "Maison rénovée avec soin, dans un quartier recherché d’Oran. Elle équilibre volumes élégants et fonctionnalité.",
+    "ref": "KIM-LEGACY-3",
+    "status": "Draft",
+    "published": false,
+    "featured": true,
+    "transaction": "Sale",
+    "currency": "DA"
+  },
+  {
+    "id": 4,
+    "type": "Villa",
+    "title": "Villa Azur sur les hauteurs",
+    "location": "Aïn El Turk, Oran",
+    "price": "78 000 000 DA",
+    "beds": 6,
+    "baths": 5,
+    "area": "620 m²",
+    "image": "https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1100&q=85",
+    "images": [
+      "https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1100&q=85"
+    ],
+    "description": "Une villa rare qui domine la baie, avec espaces de réception et une qualité de construction irréprochable.",
+    "ref": "KIM-LEGACY-4",
+    "status": "Draft",
+    "published": false,
+    "featured": false,
+    "transaction": "Sale",
+    "currency": "DA"
+  },
+  {
+    "id": 5,
+    "type": "Duplex",
+    "title": "Duplex lumineux avec terrasse",
+    "location": "Akid Lotfi, Oran",
+    "price": "31 000 000 DA",
+    "beds": 3,
+    "baths": 2,
+    "area": "195 m²",
+    "image": "https://images.unsplash.com/photo-1600585154363-67eb9e2e2099?auto=format&fit=crop&w=1100&q=85",
+    "images": [
+      "https://images.unsplash.com/photo-1600585154363-67eb9e2e2099?auto=format&fit=crop&w=1100&q=85"
+    ],
+    "description": "Un appartement duplex au caractère singulier, proche de toutes les commodités et baigné de lumière.",
+    "ref": "KIM-LEGACY-5",
+    "status": "Draft",
+    "published": false,
+    "featured": false,
+    "transaction": "Sale",
+    "currency": "DA"
+  },
+  {
+    "id": 6,
+    "type": "Maison",
+    "title": "Maison familiale avec jardin",
+    "location": "Maraval, Oran",
+    "price": "29 500 000 DA",
+    "beds": 4,
+    "baths": 2,
+    "area": "280 m²",
+    "image": "https://images.unsplash.com/photo-1605146769289-440113cc3d00?auto=format&fit=crop&w=1100&q=85",
+    "images": [
+      "https://images.unsplash.com/photo-1605146769289-440113cc3d00?auto=format&fit=crop&w=1100&q=85"
+    ],
+    "description": "Maison chaleureuse offrant un jardin généreux, parfaite pour les familles à la recherche d’un cadre serein.",
+    "ref": "KIM-LEGACY-6",
+    "status": "Draft",
+    "published": false,
+    "featured": false,
+    "transaction": "Sale",
+    "currency": "DA"
+  }
+]

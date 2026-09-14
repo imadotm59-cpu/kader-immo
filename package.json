@@ -1,0 +1,14 @@
+{
+  "name": "agence-immobiliere-kader",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env scripts/dev.mjs",
+    "dev": "node --env-file-if-exists=.env scripts/dev.mjs",
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "import:listings": "node --env-file-if-exists=.env scripts/import.mjs"
+  }
+}
