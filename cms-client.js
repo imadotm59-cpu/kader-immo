@@ -148,6 +148,14 @@ function exportData() {
   a.href=url;a.download='kader-listings-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 function bindCMS() {
+  const passwordToggle=$('.password-toggle'),passwordInput=$('#admin-password');
+  if(passwordToggle&&passwordInput) passwordToggle.addEventListener('click',()=>{
+    const show=passwordInput.type==='password';
+    passwordInput.type=show?'text':'password';
+    passwordToggle.setAttribute('aria-pressed',String(show));
+    passwordToggle.setAttribute('aria-label',show?'Masquer le mot de passe':'Afficher le mot de passe');
+    $('span',passwordToggle).textContent=show?'Masquer':'Afficher';
+  });
   $('#login-form')?.addEventListener('submit',async event=>{
     event.preventDefault();const form=event.currentTarget,values=Object.fromEntries(new FormData(form));
     if(!values.email.trim() || !values.password){formError(form,'Saisissez votre adresse e-mail et votre mot de passe.');return;}
