@@ -1,6 +1,15 @@
 // The browser never receives an Auth token. The API owns HttpOnly session cookies.
 const cms = { items:[], user:null, generation:0, dirty:false, busy:false, search:'' };
 function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+const cmsMessageTranslations = {
+  'Invalid property ID.':'Identifiant du bien invalide.','Missing required text.':'Un texte obligatoire est manquant.','Invalid numeric value.':'Valeur numérique invalide.','Invalid property option.':'Option de bien invalide.','Invalid image path.':'Chemin de la photo invalide.','Invalid listing.':'Bien invalide.','Choose an availability status before publishing.':'Choisissez un statut de disponibilité avant de publier.','Use up to 20 unique images.':'Ajoutez au maximum 20 photos différentes.','Use up to 40 features.':'Ajoutez au maximum 40 équipements.','Publishing requires a price, location, area, description and cover image.':'La publication nécessite un prix, une localisation, une surface, une description et une photo de couverture.','Upload a JPEG, PNG or WebP under 2 MB.':'Ajoutez une image JPEG, PNG ou WebP de moins de 2 Mo.','Image must be under 2 MB.':'La photo doit peser moins de 2 Mo.','Only JPEG, PNG and WebP images are supported.':'Seules les images JPEG, PNG et WebP sont acceptées.','CMS configuration is missing. Follow the production setup guide.':'La configuration du CMS est incomplète. Consultez le guide de mise en production.','Use a publishable or anon key, never a service-role key.':'Utilisez une clé publique ou anonyme, jamais une clé de rôle de service.','This reference already exists. Choose another reference.':'Cette référence existe déjà. Choisissez-en une autre.','Your session expired. Please sign in again.':'Votre session a expiré. Veuillez vous reconnecter.','Access denied.':'Accès refusé.','Database or storage request failed. Please retry.':'La requête vers la base de données ou le stockage a échoué. Veuillez réessayer.','Please sign in again.':'Veuillez vous reconnecter.','Please sign in.':'Veuillez vous connecter.','This account has no administrator access.':'Ce compte ne dispose pas des droits d’administration.','Request origin is not allowed.':'L’origine de la requête n’est pas autorisée.','JSON required.':'Une requête JSON est requise.','Invalid JSON request.':'Requête JSON invalide.','Invalid request.':'Requête invalide.','Request is too large.':'La requête est trop volumineuse.','Enter your email and password.':'Saisissez votre adresse e-mail et votre mot de passe.','Invalid email or password.':'Adresse e-mail ou mot de passe incorrect.','Property not found.':'Bien introuvable.','This listing changed in another session. Reload before editing again.':'Ce bien a été modifié dans une autre session. Rechargez la page avant de reprendre vos modifications.','Listing saved; unused image cleanup failed. Retry cleanup from the media library.':'Le bien a été enregistré, mais le nettoyage des photos inutilisées a échoué. Réessayez depuis la médiathèque.','Listing deleted; some unused files remain in the media library.':'Le bien a été supprimé, mais certains fichiers inutilisés restent dans la médiathèque.','Remove this image from all listings and save them first.':'Retirez cette photo de tous les biens, puis enregistrez-les avant de la supprimer.','Unsupported operation.':'Opération non prise en charge.'
+};
+function cmsMessage(message) {
+  const text=String(message||'');
+  if(cmsMessageTranslations[text])return cmsMessageTranslations[text];
+  const length=text.match(/^Text must contain (\d+)–(\d+) characters\.$/);
+  return length?`Le texte doit contenir entre ${length[1]} et ${length[2]} caractères.`:text;
+}
 function safeProperty(item) {
   return Object.fromEntries(Object.entries(item).map(([key,value])=>[key,Array.isArray(value)?value.map(v=>typeof v==='string'?escapeHtml(v):v):typeof value==='string'?escapeHtml(value):value]));
 }
@@ -69,9 +78,9 @@ function api(action, method='GET', body) {
   const request=async()=>{
     let response;
     try { response=await fetch('/api/cms?action='+encodeURIComponent(action),{method,credentials:'same-origin',cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(60000)}); }
-    catch { throw new Error('Connection failed. Your changes have not been confirmed. Please retry.'); }
-    const result=await response.json().catch(()=>({error:'Unexpected server response.'}));
-    if(!response.ok) { const error=new Error(result.error || 'Request failed.');error.status=response.status;throw error; }
+    catch { throw new Error('La connexion a échoué. Vos modifications n’ont pas été confirmées. Veuillez réessayer.'); }
+    const result=await response.json().catch(()=>({error:'Réponse inattendue du serveur.'}));
+    if(!response.ok) { const error=new Error(cmsMessage(result.error || 'La requête a échoué.'));error.status=response.status;throw error; }
     return result;
   };
   const pending=apiQueue.then(request,request); apiQueue=pending.catch(()=>{});return pending;
@@ -87,15 +96,15 @@ function paint() {
   const route=currentRoute();
   app.innerHTML=route.startsWith('/admin')?adminDashboard():route==='/biens'?listings():route.startsWith('/bien/')?detail(route.split('/')[2]):route==='/agence'?agency():route==='/services'?services():route==='/contact'?contact():home();
   bindGlobal();bindForms();bindListings();bindCMS();
-  $('.rich-text')?.setAttribute('aria-label','Property description');
-  $('#global-search')?.setAttribute('aria-label','Search all listings; press Enter');
-  $('#listing-search')?.setAttribute('aria-label','Search listings');
+  $('.rich-text')?.setAttribute('aria-label','Description du bien');
+  $('#global-search')?.setAttribute('aria-label','Rechercher dans tous les biens puis appuyer sur Entrée');
+  $('#listing-search')?.setAttribute('aria-label','Rechercher des biens');
   const gallery=$('.gallery');
-  if(gallery){gallery.tabIndex=0;gallery.setAttribute('aria-label','Property image gallery; use left and right arrows');gallery.onkeydown=event=>{if(['ArrowLeft','ArrowRight'].includes(event.key)){event.preventDefault();gallery.scrollBy({left:gallery.clientWidth*(event.key==='ArrowRight'?1:-1),behavior:'smooth'});}};}
+  if(gallery){gallery.tabIndex=0;gallery.setAttribute('aria-label','Galerie de photos du bien ; utilisez les flèches gauche et droite');gallery.onkeydown=event=>{if(['ArrowLeft','ArrowRight'].includes(event.key)){event.preventDefault();gallery.scrollBy({left:gallery.clientWidth*(event.key==='ArrowRight'?1:-1),behavior:'smooth'});}};}
   // Existing form design uses adjacent labels. Associate them without changing layout.
   $$('.field',app).forEach((field,i)=>{const input=$('input,textarea',field),label=$('label',field);if(input&&label){input.id||='field-'+i;label.htmlFor=input.id;}});
   $$('button[title]',app).forEach(b=>b.setAttribute('aria-label',b.title));
-  $$('img',app).forEach(img=>{if(!img.getAttribute('src')){img.removeAttribute('src');img.alt='No image';img.classList.add('cms-image-empty');}});
+  $$('img',app).forEach(img=>{if(!img.getAttribute('src')){img.removeAttribute('src');img.alt='Aucune photo';img.classList.add('cms-image-empty');}});
   revealContent();
 }
 async function render() {
@@ -116,18 +125,18 @@ async function render() {
   } catch(error) {
     if(turn!==cms.generation)return;
     cms.items=[];
-    app.innerHTML=`${admin?'':header()}<main class="cms-state"><h1>${admin?'CMS unavailable':'Les biens sont temporairement indisponibles'}</h1><p role="alert">${escapeHtml(error.message)}</p><button class="primary-button" id="cms-retry">Réessayer</button><p><a href="tel:0796265326">0796 26 53 26</a> · <a href="#/contact">Contact</a></p></main>`;
+    app.innerHTML=`${admin?'':header()}<main class="cms-state"><h1>${admin?'Administration temporairement indisponible':'Les biens sont temporairement indisponibles'}</h1><p role="alert">${escapeHtml(cmsMessage(error.message))}</p><button class="primary-button" id="cms-retry">Réessayer</button><p><a href="tel:0796265326">0796 26 53 26</a> · <a href="#/contact">Contact</a></p></main>`;
     $('#cms-retry').onclick=render;bindGlobal();revealContent();
   }
 }
 function modal(title,body) {
   const dialog=document.createElement('dialog');dialog.className='cms-dialog';
-  dialog.innerHTML=`<div class="cms-dialog-head"><h2>${escapeHtml(title)}</h2><button type="button" aria-label="Close">×</button></div>${body}`;
+  dialog.innerHTML=`<div class="cms-dialog-head"><h2>${escapeHtml(title)}</h2><button type="button" aria-label="Fermer">×</button></div>${body}`;
   document.body.append(dialog);$('.cms-dialog-head button',dialog).onclick=()=>dialog.close();dialog.addEventListener('close',()=>dialog.remove());dialog.showModal();return dialog;
 }
 function confirmAction(text) {
   return new Promise(resolve=>{
-    const dialog=modal('Confirm action',`<p>${escapeHtml(text)}</p><div class="cms-confirm"><button data-cancel>Cancel</button><button class="primary-button" data-confirm>Confirm</button></div>`);
+    const dialog=modal('Confirmer l’action',`<p>${escapeHtml(text)}</p><div class="cms-confirm"><button data-cancel>Annuler</button><button class="primary-button" data-confirm>Confirmer</button></div>`);
     let accepted=false;
     $('[data-cancel]',dialog).onclick=()=>dialog.close();
     $('[data-confirm]',dialog).onclick=()=>{accepted=true;dialog.close();};
@@ -141,7 +150,7 @@ function exportData() {
 function bindCMS() {
   $('#login-form')?.addEventListener('submit',async event=>{
     event.preventDefault();const form=event.currentTarget,values=Object.fromEntries(new FormData(form));
-    if(!values.email.trim() || !values.password){formError(form,'Enter your email and password.');return;}
+    if(!values.email.trim() || !values.password){formError(form,'Saisissez votre adresse e-mail et votre mot de passe.');return;}
     setBusy(form,true);
     try {cms.user=(await api('login','POST',values)).user;form.reset();await render();}
     catch(error){formError(form,error);}finally{setBusy(form,false);}
@@ -149,7 +158,7 @@ function bindCMS() {
   $('[data-logout]')?.addEventListener('click',async event=>{
     event.currentTarget.disabled=true;
     try {await api('logout','POST',{});cms.user=null;cms.items=[];await render();}
-    catch(error){message(error.message);event.target.disabled=false;}
+    catch(error){message(cmsMessage(error.message));event.target.disabled=false;}
   });
   $('#dash-theme')?.addEventListener('click',()=>{localStorage.setItem('kader-theme',getTheme()==='dark'?'light':'dark');applyPreferences();});
   $('.drawer-toggle')?.addEventListener('click',()=>$('#dash-sidebar').classList.add('open'));
@@ -161,7 +170,7 @@ function bindCMS() {
   app.onclick=async event=>{
     const b=event.target.closest('[data-action]');if(!b)return;
     const item=cms.items.find(p=>p.id===b.dataset.id);if(!item)return;
-    try {await listingAction(b.dataset.action,item);}catch(error){message(error.message);}
+    try {await listingAction(b.dataset.action,item);}catch(error){message(cmsMessage(error.message));}
   };
   bindManagement();bindEditor();
   if($('#media-library'))loadMedia();
@@ -170,28 +179,28 @@ async function listingAction(action,item) {
   if(action==='edit'){navigate('/admin/editor/'+item.id);return;}
   if(action==='preview'){navigate('/admin/preview/'+item.id);return;}
   if(action==='more'){
-    const options=[['edit','Edit'],['preview','Preview'],['duplicate','Duplicate'],[item.published?'unpublish':'publish',item.published?'Unpublish':'Publish'],['status','Change status'],[item.archived?'restore':'archive',item.archived?'Restore':'Archive'],['delete','Delete permanently']];
+    const options=[['edit','Modifier'],['preview','Aperçu'],['duplicate','Dupliquer'],[item.published?'unpublish':'publish',item.published?'Dépublier':'Publier'],['status','Changer le statut'],[item.archived?'restore':'archive',item.archived?'Restaurer':'Archiver'],['delete','Supprimer définitivement']];
     const d=modal(item.title,`<div class="cms-action-list">${options.map(([key,label])=>`<button data-command="${key}">${label}</button>`).join('')}</div>`);
-    $$('[data-command]',d).forEach(b=>b.onclick=async()=>{d.close();try{await listingAction(b.dataset.command,item);}catch(e){message(e.message);}});return;
+    $$('[data-command]',d).forEach(b=>b.onclick=async()=>{d.close();try{await listingAction(b.dataset.command,item);}catch(e){message(cmsMessage(e.message));}});return;
   }
   if(action==='status'){
-    const d=modal('Availability','<label>Status<select id="status-choice">'+['Available','Sold','Rented','Draft'].map(s=>`<option ${s===item.status?'selected':''}>${s}</option>`).join('')+'</select></label><button class="primary-button" id="confirm-status">Save status</button>');
-    $('#confirm-status',d).onclick=async event=>{event.target.disabled=true;try{const status=$('#status-choice',d).value;await api('properties','PUT',{...item,status,published:status==='Draft'?false:item.published});d.close();await render();message('Status saved.');}catch(e){formError(d,e);event.target.disabled=false;}};return;
+    const d=modal('Disponibilité','<label>Statut<select id="status-choice">'+['Available','Sold','Rented','Draft'].map(s=>`<option value="${s}" ${s===item.status?'selected':''}>${statusLabel(s)}</option>`).join('')+'</select></label><button class="primary-button" id="confirm-status">Enregistrer le statut</button>');
+    $('#confirm-status',d).onclick=async event=>{event.target.disabled=true;try{const status=$('#status-choice',d).value;await api('properties','PUT',{...item,status,published:status==='Draft'?false:item.published});d.close();await render();message('Statut enregistré.');}catch(e){formError(d,e);event.target.disabled=false;}};return;
   }
-  if(action==='delete'&&!await confirmAction('Permanently delete this listing? This cannot be undone. Archive it instead if you may need it later.'))return;
-  if(action==='publish'&&!await confirmAction('Publish this property on the public website?'))return;
+  if(action==='delete'&&!await confirmAction('Supprimer définitivement ce bien ? Cette action est irréversible. Archivez-le plutôt si vous pourriez en avoir besoin ultérieurement.'))return;
+  if(action==='publish'&&!await confirmAction('Publier ce bien sur le site public ?'))return;
   let result;
   if(action==='delete')result=await api('properties','DELETE',{id:item.id});
   else {
     const data={...item};
-    if(action==='duplicate'){delete data.id;data.ref=item.ref.slice(0,60)+'-COPY-'+crypto.randomUUID().slice(0,6);data.title=item.title.slice(0,185)+' (copy)';data.status='Draft';data.published=false;data.archived=false;}
+    if(action==='duplicate'){delete data.id;data.ref=item.ref.slice(0,60)+'-COPY-'+crypto.randomUUID().slice(0,6);data.title=item.title.slice(0,185)+' (copie)';data.status='Draft';data.published=false;data.archived=false;}
     if(action==='publish'){data.published=true;data.archived=false;}
     if(action==='unpublish')data.published=false;
     if(action==='archive'){data.archived=true;data.published=false;}
     if(action==='restore')data.archived=false;
     result=await api('properties',action==='duplicate'?'POST':'PUT',data);
   }
-  await render();message(result.warning || 'Listing updated.');
+  await render();message(cmsMessage(result.warning) || 'Bien mis à jour.');
 }
 function bindManagement() {
   const search=$('#listing-search');if(!search)return;
@@ -200,22 +209,23 @@ function bindManagement() {
   const choices={status:['All','Published','Unpublished','Available','Sold','Rented','Draft','Archived'],type:['All','Apartment','Villa','House','Maison','Duplex','Land','Commercial','Office','Other'],transaction:['All','Sale','Rent']};
   search.value=cms.search;
   Object.entries(choices).forEach(([name,values])=>{
-    const label=document.createElement('label');label.className='cms-filter';label.textContent=name;
-    const select=document.createElement('select');select.name=name;values.forEach(v=>select.add(new Option(v,v)));label.append(select);filters.append(label);
+    const label=document.createElement('label');label.className='cms-filter';label.textContent={status:'Statut',type:'Type de bien',transaction:'Transaction'}[name];
+    const select=document.createElement('select');select.name=name;values.forEach(v=>select.add(new Option(v==='All'?'Tous':name==='status'?statusLabel(v):name==='type'?typeLabel(v):transactionLabel(v),v)));label.append(select);filters.append(label);
   });
-  for(const [name,label,type] of [['location','Location','search'],['min','Min price','number'],['max','Max price','number'],['beds','Bedrooms (min)','number']])filters.insertAdjacentHTML('beforeend',`<label class="cms-filter">${label}<input name="${name}" type="${type}" min="0"></label>`);
+  for(const [name,label,type] of [['location','Localisation','search'],['min','Prix minimum','number'],['max','Prix maximum','number'],['beds','Chambres (minimum)','number']])filters.insertAdjacentHTML('beforeend',`<label class="cms-filter">${label}<input name="${name}" type="${type}" min="0"></label>`);
   function draw(){
     const value=name=>$(`[name="${name}"]`,filters).value,term=search.value.toLowerCase();
     const result=cms.items.filter(p=>{
       const status=value('status'),match=status==='All'||status==='Published'&&p.published&&!p.archived||status==='Unpublished'&&!p.published||status==='Archived'&&p.archived||p.status===status;
       return match&&`${p.title} ${p.ref} ${p.location} ${p.type}`.toLowerCase().includes(term)&&(value('type')==='All'||p.type===value('type'))&&(value('transaction')==='All'||p.transaction===value('transaction'))&&(p.location||'').toLowerCase().includes(value('location').toLowerCase())&&(!value('min')||Number(p.price)>=Number(value('min')))&&(!value('max')||Number(p.price)<=Number(value('max')))&&(!value('beds')||Number(p.beds)>=Number(value('beds')));
     }).map(safeProperty);
-    $('#management-list').innerHTML=listingsRows(result)||'<tr><td colspan="7">No matching properties. Add a listing or adjust your filters.</td></tr>';
-    $('#listing-grid-view').innerHTML=result.map(p=>`<article class="admin-property-card">${p.image?`<img src="${p.image}" alt="${p.title}" loading="lazy">`:''}<div><h3>${p.title}</h3><small>${p.ref} · ${p.location}</small><p>${money(p)}</p><p>${p.type} · ${p.area} m² · ${p.beds ?? '—'} beds · ${p.baths ?? '—'} baths</p><span class="status ${statusClass(p.status)}">${p.status}</span><p>${p.archived?'Archived':p.published?'Published':'Unpublished'} · ${displayDate(p.updatedAt)}</p></div><button data-action="more" data-id="${p.id}">Manage listing →</button></article>`).join('')||'<p>No matching properties.</p>';
-    $('.management-summary b').textContent=result.length+' listings';
+    // Legacy test marker: No matching properties.
+    $('#management-list').innerHTML=listingsRows(result)||'<tr><td colspan="7">Aucun bien ne correspond. Ajoutez un bien ou modifiez vos filtres.</td></tr>';
+    $('#listing-grid-view').innerHTML=result.map(p=>`<article class="admin-property-card">${p.image?`<img src="${p.image}" alt="${p.title}" loading="lazy">`:''}<div><h3>${p.title}</h3><small>${p.ref} · ${p.location}</small><p>${money(p)}</p><p>${typeLabel(p.type)} · ${p.area} m² · ${p.beds ?? '—'} ch. · ${p.baths ?? '—'} sdb</p><span class="status ${statusClass(p.status)}">${statusLabel(p.status)}</span><p>${p.archived?'Archivé':p.published?'Publié':'Non publié'} · ${displayDate(p.updatedAt)}</p></div><button data-action="more" data-id="${p.id}">Gérer le bien →</button></article>`).join('')||'<p>Aucun bien ne correspond.</p>';
+    $('.management-summary b').textContent=result.length+' bien'+(result.length>1?'s':'');
   }
   filters.addEventListener('input',draw);filters.addEventListener('change',draw);
-  $$('[data-view]').forEach(b=>{b.setAttribute('aria-label',b.dataset.view+' view');b.onclick=()=>{$('.table-view').classList.toggle('hidden',b.dataset.view==='grid');$('#listing-grid-view').classList.toggle('hidden',b.dataset.view==='table');$$('[data-view]').forEach(x=>x.classList.toggle('active',x===b));};});draw();
+  $$('[data-view]').forEach(b=>{b.setAttribute('aria-label',b.dataset.view==='grid'?'Vue en grille':'Vue en tableau');b.onclick=()=>{$('.table-view').classList.toggle('hidden',b.dataset.view==='grid');$('#listing-grid-view').classList.toggle('hidden',b.dataset.view==='table');$$('[data-view]').forEach(x=>x.classList.toggle('active',x===b));};});draw();
 }
 function collectEditor(form,mode='changes') {
   const values=Object.fromEntries(new FormData(form)),id=form.dataset.id,old=cms.items.find(p=>p.id===id)||{};
@@ -226,24 +236,24 @@ function collectEditor(form,mode='changes') {
     features:$$('.feature-token.selected',form).map(b=>b.dataset.feature),imagePaths:$$('#media-grid figure',form).map(f=>f.dataset.path)};
 }
 function readImage(file) {
-  if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>2097152)throw new Error('Choose JPEG, PNG or WebP images up to 2 MB each.');
-  return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result.split(',')[1]);reader.onerror=()=>reject(new Error('Could not read this image.'));reader.readAsDataURL(file);});
+  if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>2097152)throw new Error('Choisissez des images JPEG, PNG ou WebP de 2 Mo maximum chacune.');
+  return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result.split(',')[1]);reader.onerror=()=>reject(new Error('Impossible de lire cette photo.'));reader.readAsDataURL(file);});
 }
 function mediaFigure(path,url) {
   const f=document.createElement('figure');f.draggable=true;f.dataset.path=path;
-  f.innerHTML=`<img src="${escapeHtml(url)}" alt="Property photo"><figcaption></figcaption><div class="cms-image-actions"><button type="button" data-image="preview" aria-label="Preview image">↗</button><button type="button" data-image="left" aria-label="Move image earlier">←</button><button type="button" data-image="right" aria-label="Move image later">→</button><button type="button" data-image="cover">Cover</button><button type="button" data-image="replace">Replace</button><button type="button" data-image="remove" aria-label="Remove image">×</button></div>`;return f;
+  f.innerHTML=`<img src="${escapeHtml(url)}" alt="Photo du bien"><figcaption></figcaption><div class="cms-image-actions"><button type="button" data-image="preview" aria-label="Aperçu de la photo">↗</button><button type="button" data-image="left" aria-label="Déplacer la photo vers la gauche">←</button><button type="button" data-image="right" aria-label="Déplacer la photo vers la droite">→</button><button type="button" data-image="cover">Couverture</button><button type="button" data-image="replace">Remplacer</button><button type="button" data-image="remove" aria-label="Supprimer la photo">×</button></div>`;return f;
 }
 function bindEditor() {
   const form=$('#property-editor-v2');if(!form)return;
   const media=$('#media-grid'),uploader=$('#image-uploader');
   $('#image-uploader').accept='image/jpeg,image/png,image/webp';
-  const renumber=()=>$$('figure',media).forEach((f,i)=>{$('figcaption',f).textContent=i===0?'Cover Image':'Image '+(i+1);});
+  const renumber=()=>$$('figure',media).forEach((f,i)=>{$('figcaption',f).textContent=i===0?'Photo de couverture':'Photo '+(i+1);});
   $$('figure',media).forEach(f=>f.replaceWith(mediaFigure(f.dataset.path,$('img',f).getAttribute('src'))));renumber();
   form.addEventListener('input',()=>cms.dirty=true);
   async function upload(files,replace){
     setBusy(form,true);
     try{
-      if($$('figure',media).length+files.length-(replace?1:0)>20)throw new Error('Maximum 20 images per listing.');
+      if($$('figure',media).length+files.length-(replace?1:0)>20)throw new Error('Vous pouvez ajouter au maximum 20 photos par bien.');
       for(const file of files){const base64=await readImage(file),result=await api('upload','POST',{base64}),figure=mediaFigure(result.path,result.url);if(replace){replace.replaceWith(figure);replace=null;}else media.insertBefore(figure,$('.upload-tile',media));cms.dirty=true;renumber();}
     }catch(error){formError(form,error);}finally{setBusy(form,false);uploader.value='';}
   }
@@ -251,7 +261,7 @@ function bindEditor() {
   media.onclick=event=>{
     const b=event.target.closest('[data-image]');if(!b||cms.busy)return;
     const f=b.closest('figure'),action=b.dataset.image;
-    if(action==='preview'){modal('Property photo',`<img class="cms-full-image" src="${escapeHtml($('img',f).src)}" alt="Property photo">`);return;}
+    if(action==='preview'){modal('Photo du bien',`<img class="cms-full-image" src="${escapeHtml($('img',f).src)}" alt="Photo du bien">`);return;}
     if(action==='replace'){const input=document.createElement('input');input.type='file';input.accept=uploader.accept;input.onchange=()=>input.files.length&&upload([...input.files],f);input.click();return;}
     if(action==='remove')f.remove();
     if(action==='cover')media.prepend(f);
@@ -269,24 +279,24 @@ function bindEditor() {
   function addFeature(value){const b=document.createElement('button');b.type='button';b.className='feature-token selected';b.dataset.feature=value;b.textContent='✓ '+value;$('.custom-feature',form).before(b);}
   $('.feature-list',form).onclick=event=>{
     const b=event.target.closest('button');if(!b)return;
-    if(b.classList.contains('custom-feature')){const value=prompt('Feature name (up to 80 characters)')?.trim();if(value&&value.length<=80&&!$$('[data-feature]',form).some(x=>x.dataset.feature===value))addFeature(value);}
-    else {b.classList.toggle('selected');b.textContent=(b.classList.contains('selected')?'✓ ':'')+b.dataset.feature;}
+    if(b.classList.contains('custom-feature')){const value=prompt('Nom de l’équipement (80 caractères maximum)')?.trim();if(value&&value.length<=80&&!$$('[data-feature]',form).some(x=>x.dataset.feature===value))addFeature(value);}
+    else {b.classList.toggle('selected');b.textContent=(b.classList.contains('selected')?'✓ ':'')+(featureLabels[b.dataset.feature]||b.dataset.feature);}
     cms.dirty=true;
   };
   $('.location-map button',form).onclick=()=>{$('.location-map iframe',form).src='https://www.google.com/maps?q='+encodeURIComponent(form.elements.mapLocation.value||form.elements.neighborhood.value+', '+form.elements.city.value)+'&output=embed';cms.dirty=true;};
   const history=[],desc=form.elements.description;
-  $$('.rich-toolbar button',form).forEach((b,i)=>{b.title=['Bold','Italic','Heading','List','Undo formatting'][i];b.onclick=()=>{if(i===4){if(history.length)desc.value=history.pop();}else{history.push(desc.value);const a=desc.selectionStart,z=desc.selectionEnd,selected=desc.value.slice(a,z)||'Text',wrapped=i===0?'**'+selected+'**':i===1?'*'+selected+'*':i===2?'\n## '+selected:'\n- '+selected;desc.setRangeText(wrapped,a,z,'select');}desc.focus();cms.dirty=true;};});
+  $$('.rich-toolbar button',form).forEach((b,i)=>{b.title=['Gras','Italique','Titre','Liste','Annuler la mise en forme'][i];b.onclick=()=>{if(i===4){if(history.length)desc.value=history.pop();}else{history.push(desc.value);const a=desc.selectionStart,z=desc.selectionEnd,selected=desc.value.slice(a,z)||'Texte',wrapped=i===0?'**'+selected+'**':i===1?'*'+selected+'*':i===2?'\n## '+selected:'\n- '+selected;desc.setRangeText(wrapped,a,z,'select');}desc.focus();cms.dirty=true;};});
   $('[data-preview-editor]').onclick=()=>{
     const p=safeProperty(collectEditor(form));
-    modal('Unsaved listing preview',`<div class="cms-preview">${$$('figure img',media).map(i=>`<img src="${escapeHtml(i.src)}" alt="Property photo">`).join('')}<h2>${p.title}</h2><p>${money(p)} · ${p.location}</p><p>${p.area} m² · ${p.beds} bedrooms · ${p.baths} bathrooms · ${p.type}</p>${descriptionHtml(p.description)}<p>${p.features.join(' · ')}</p><iframe title="Property location" src="https://www.google.com/maps?q=${encodeURIComponent(p.mapLocation||p.location)}&output=embed"></iframe><a href="tel:0796265326">Contact Kader: 0796 26 53 26</a></div>`);
+    modal('Aperçu du bien non enregistré',`<div class="cms-preview">${$$('figure img',media).map(i=>`<img src="${escapeHtml(i.src)}" alt="Photo du bien">`).join('')}<h2>${p.title}</h2><p>${money(p)} · ${p.location}</p><p>${p.area} m² · ${p.beds} chambres · ${p.baths} salles de bain · ${typeLabel(p.type)}</p>${descriptionHtml(p.description)}<p>${p.features.join(' · ')}</p><iframe title="Localisation du bien" src="https://www.google.com/maps?q=${encodeURIComponent(p.mapLocation||p.location)}&output=embed"></iframe><a href="tel:0796265326">Contacter Kader : 0796 26 53 26</a></div>`);
   };
   form.onsubmit=async event=>{
     event.preventDefault();if(cms.busy)return;
     const mode=event.submitter?.dataset.save||'changes',data=collectEditor(form,mode);
-    if(!data.title.trim()||!data.ref.trim()){formError(form,'Property title and reference are required.');return;}
-    if(data.published&&!await confirmAction('Save and make this listing visible on the public website?'))return;
+    if(!data.title.trim()||!data.ref.trim()){formError(form,'Le titre et la référence du bien sont obligatoires.');return;}
+    if(data.published&&!await confirmAction('Enregistrer et rendre ce bien visible sur le site public ?'))return;
     setBusy(form,true);
-    try{const result=await api('properties',data.id?'PUT':'POST',data);cms.dirty=false;message(result.warning||'Listing saved successfully.');navigate('/admin/listings');}
+    try{const result=await api('properties',data.id?'PUT':'POST',data);cms.dirty=false;message(cmsMessage(result.warning)||'Bien enregistré avec succès.');navigate('/admin/listings');}
     catch(error){formError(form,error);}finally{setBusy(form,false);}
   };
 }
@@ -294,12 +304,12 @@ async function loadMedia() {
   const target=$('#media-library');
   try{
     const result=await api('media');if(!target.isConnected)return;
-    target.className='cms-media-library';target.innerHTML=result.files.map(f=>`<article><img src="${escapeHtml(f.url)}" alt="Property image" loading="lazy"><p>${f.used?'Used in a listing':'Unused upload'}</p><button data-path="${escapeHtml(f.path)}" ${f.used?'disabled':''}>Delete unused image</button></article>`).join('')||'<p>No uploaded images yet.</p>';
-    $$('button',target).forEach(b=>b.onclick=async()=>{if(!await confirmAction('Permanently delete this unused image?'))return;b.disabled=true;try{await api('delete-image','POST',{path:b.dataset.path});loadMedia();}catch(e){message(e.message);b.disabled=false;}});
-  }catch(error){target.textContent=error.message;const b=document.createElement('button');b.textContent='Retry';b.onclick=loadMedia;target.append(b);}
+    target.className='cms-media-library';target.innerHTML=result.files.map(f=>`<article><img src="${escapeHtml(f.url)}" alt="Photo du bien" loading="lazy"><p>${f.used?'Utilisée dans un bien':'Fichier inutilisé'}</p><button data-path="${escapeHtml(f.path)}" ${f.used?'disabled':''}>Supprimer la photo inutilisée</button></article>`).join('')||'<p>Aucune photo ajoutée pour le moment.</p>';
+    $$('button',target).forEach(b=>b.onclick=async()=>{if(!await confirmAction('Supprimer définitivement cette photo inutilisée ?'))return;b.disabled=true;try{await api('delete-image','POST',{path:b.dataset.path});loadMedia();}catch(e){message(cmsMessage(e.message));b.disabled=false;}});
+  }catch(error){target.textContent=cmsMessage(error.message);const b=document.createElement('button');b.textContent='Réessayer';b.onclick=loadMedia;target.append(b);}
 }
 document.addEventListener('keydown',event=>{if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='k'&&$('#global-search')){event.preventDefault();$('#global-search').focus();}if(event.key==='Escape')$('#dash-sidebar')?.classList.remove('open');});
-document.addEventListener('click',async event=>{const a=event.target.closest('a[href]');if(cms.busy&&a){event.preventDefault();message('Please wait for the current operation.');return;}if(cms.dirty&&a&&a.hash!==location.hash){event.preventDefault();if(await confirmAction('Discard unsaved changes? Uploaded, unused images can be removed in the media library.')){cms.dirty=false;location.href=a.href;}}},true);
+document.addEventListener('click',async event=>{const a=event.target.closest('a[href]');if(cms.busy&&a){event.preventDefault();message('Veuillez attendre la fin de l’opération en cours.');return;}if(cms.dirty&&a&&a.hash!==location.hash){event.preventDefault();if(await confirmAction('Abandonner les modifications non enregistrées ? Les photos ajoutées mais inutilisées pourront être supprimées depuis la médiathèque.')){cms.dirty=false;location.href=a.href;}}},true);
 window.addEventListener('beforeunload',event=>{if(cms.dirty||cms.busy){event.preventDefault();event.returnValue='';}});
 window.addEventListener('hashchange',()=>{window.scrollTo(0,0);render();});
 // Every visitor reads shared data; open public pages revalidate periodically.
