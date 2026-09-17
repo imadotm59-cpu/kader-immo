@@ -140,3 +140,6 @@ button:disabled{opacity:.55;cursor:wait}button:focus-visible,a:focus-visible,inp
 :root[data-theme="dark"] .detail-route .detail-title p,:root[data-theme="dark"] .detail-route .detail-price small{color:#c6d4df!important}
 
 @media(max-width:550px){.nav{gap:8px}.header-brand{gap:7px}.header-brand-name{font-size:.86rem}.topbar .logo-mark{width:50px;height:50px}.footer-grid .logo-mark{width:78px;height:78px}.login .logo-mark{width:84px;height:84px}}
+
+/* Property classification: preserve the existing card geometry and palette. */
+.prestige-badge{left:auto;right:14px;background:rgba(6,27,49,.9);color:#f0c875}

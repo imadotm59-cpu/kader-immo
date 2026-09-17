@@ -34,6 +34,7 @@ export function validateProperty(input) {
   if (!Array.isArray(features) || features.length > 40) throw new HttpError(400, 'Use up to 40 features.');
   const data = {
     type: choice(input.type || 'Villa', TYPES), transaction: choice(input.transaction || 'Sale', ['Sale','Rent']),
+    category: choice(input.category || 'standard', ['standard','prestige']),
     currency: choice(input.currency || 'DA', ['DA','EUR','USD']), description: text(input.description, 20000),
     location: text(input.location || input.neighborhood || input.city, 300, published),
     features: features.map(f => text(f, 80, true))

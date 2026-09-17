@@ -7,7 +7,7 @@ const id='11111111-1111-4111-8111-111111111111';
 const stamp=()=>new Date().toISOString();
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aG7sAAAAASUVORK5CYII=','base64');
 const files=new Set([uid+'/'+id+'.png']);
-const rows=[{id,ref:'KIM-TEST-01',title:'Villa test à Canastel',price:65000000,status:'Available',published:true,archived:false,featured:true,images:[...files],data:{type:'Villa',transaction:'Sale',currency:'DA',location:'Canastel, Oran',area:480,beds:5,baths:4,description:'A local integration test listing.',features:['Pool','Custom test feature'],city:'Oran',neighborhood:'Canastel'},created_at:stamp(),updated_at:stamp()}];
+const rows=[{id,ref:'KIM-TEST-01',title:'Villa test à Canastel',price:65000000,status:'Available',published:true,archived:false,featured:true,images:[...files],data:{type:'Villa',category:'standard',transaction:'Sale',currency:'DA',location:'Canastel, Oran',area:480,beds:5,baths:4,description:'A local integration test listing.',features:['Pool','Custom test feature'],city:'Oran',neighborhood:'Canastel'},created_at:stamp(),updated_at:stamp()}];
 process.env.SUPABASE_URL='http://127.0.0.1:4189';
 process.env.SUPABASE_ANON_KEY='sb_publishable_local_fixture';
 process.env.APP_ORIGIN='http://localhost:4188';

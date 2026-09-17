@@ -11,7 +11,7 @@ function cmsMessage(message) {
   return length?`Le texte doit contenir entre ${length[1]} et ${length[2]} caractères.`:text;
 }
 function safeProperty(item) {
-  return Object.fromEntries(Object.entries(item).map(([key,value])=>[key,Array.isArray(value)?value.map(v=>typeof v==='string'?escapeHtml(v):v):typeof value==='string'?escapeHtml(value):value]));
+  return {category:'standard',...Object.fromEntries(Object.entries(item).map(([key,value])=>[key,Array.isArray(value)?value.map(v=>typeof v==='string'?escapeHtml(v):v):typeof value==='string'?escapeHtml(value):value]))};
 }
 function descriptionHtml(escaped) {
   // Tiny Markdown subset. Input MUST already be escaped; raw HTML is never rendered.
@@ -56,7 +56,7 @@ function adminLoading(route) {
 function loadingScreen(route, admin) {
   if (admin) return adminLoading(route);
   if (route === '/') return home(true);
-  if (route === '/biens') return listings(true);
+  if (route === '/biens' || route === '/biens/prestige') return listings(true,route === '/biens/prestige');
   if (route.startsWith('/bien/')) return detailLoading();
   return `${header()}<main id="content"></main>${footer()}`;
 }
@@ -94,7 +94,7 @@ function formError(form,error) {
 function setBusy(form,busy) { cms.busy=busy;$$('button,input,select,textarea',form).forEach(el=>el.disabled=busy);form.setAttribute('aria-busy',String(busy)); }
 function paint() {
   const route=currentRoute();
-  app.innerHTML=route.startsWith('/admin')?adminDashboard():route==='/biens'?listings():route.startsWith('/bien/')?detail(route.split('/')[2]):route==='/agence'?agency():route==='/services'?services():route==='/contact'?contact():home();
+  app.innerHTML=route.startsWith('/admin')?adminDashboard():route==='/biens'||route==='/biens/prestige'?listings(false,route==='/biens/prestige'):route.startsWith('/bien/')?detail(route.split('/')[2]):route==='/agence'?agency():route==='/services'?services():route==='/contact'?contact():home();
   bindGlobal();bindForms();bindListings();bindCMS();
   $('.rich-text')?.setAttribute('aria-label','Description du bien');
   $('#global-search')?.setAttribute('aria-label','Rechercher dans tous les biens puis appuyer sur Entrée');
@@ -214,22 +214,22 @@ function bindManagement() {
   const search=$('#listing-search');if(!search)return;
   const filters=$('.listing-filters');
   $$('[data-filter-menu]',filters).forEach(b=>b.remove());
-  const choices={status:['All','Published','Unpublished','Available','Sold','Rented','Draft','Archived'],type:['All','Apartment','Villa','House','Maison','Duplex','Land','Commercial','Office','Other'],transaction:['All','Sale','Rent']};
+  const choices={category:['All','standard','prestige'],status:['All','Published','Unpublished','Available','Sold','Rented','Draft','Archived'],type:['All','Apartment','Villa','House','Maison','Duplex','Land','Commercial','Office','Other'],transaction:['All','Sale','Rent']};
   search.value=cms.search;
   Object.entries(choices).forEach(([name,values])=>{
-    const label=document.createElement('label');label.className='cms-filter';label.textContent={status:'Statut',type:'Type de bien',transaction:'Transaction'}[name];
-    const select=document.createElement('select');select.name=name;values.forEach(v=>select.add(new Option(v==='All'?'Tous':name==='status'?statusLabel(v):name==='type'?typeLabel(v):transactionLabel(v),v)));label.append(select);filters.append(label);
+    const label=document.createElement('label');label.className='cms-filter';label.textContent={category:'Catégorie',status:'Statut',type:'Type de bien',transaction:'Transaction'}[name];
+    const select=document.createElement('select');select.name=name;values.forEach(v=>select.add(new Option(v==='All'?'Tous':name==='category'?categoryLabel(v):name==='status'?statusLabel(v):name==='type'?typeLabel(v):transactionLabel(v),v)));label.append(select);filters.append(label);
   });
   for(const [name,label,type] of [['location','Localisation','search'],['min','Prix minimum','number'],['max','Prix maximum','number'],['beds','Chambres (minimum)','number']])filters.insertAdjacentHTML('beforeend',`<label class="cms-filter">${label}<input name="${name}" type="${type}" min="0"></label>`);
   function draw(){
     const value=name=>$(`[name="${name}"]`,filters).value,term=search.value.toLowerCase();
     const result=cms.items.filter(p=>{
       const status=value('status'),match=status==='All'||status==='Published'&&p.published&&!p.archived||status==='Unpublished'&&!p.published||status==='Archived'&&p.archived||p.status===status;
-      return match&&`${p.title} ${p.ref} ${p.location} ${p.type}`.toLowerCase().includes(term)&&(value('type')==='All'||p.type===value('type'))&&(value('transaction')==='All'||p.transaction===value('transaction'))&&(p.location||'').toLowerCase().includes(value('location').toLowerCase())&&(!value('min')||Number(p.price)>=Number(value('min')))&&(!value('max')||Number(p.price)<=Number(value('max')))&&(!value('beds')||Number(p.beds)>=Number(value('beds')));
+      return match&&`${p.title} ${p.ref} ${p.location} ${p.type} ${categoryLabel(p.category)}`.toLowerCase().includes(term)&&(value('category')==='All'||p.category===value('category'))&&(value('type')==='All'||p.type===value('type'))&&(value('transaction')==='All'||p.transaction===value('transaction'))&&(p.location||'').toLowerCase().includes(value('location').toLowerCase())&&(!value('min')||Number(p.price)>=Number(value('min')))&&(!value('max')||Number(p.price)<=Number(value('max')))&&(!value('beds')||Number(p.beds)>=Number(value('beds')));
     }).map(safeProperty);
     // Legacy test marker: No matching properties.
     $('#management-list').innerHTML=listingsRows(result)||'<tr><td colspan="7">Aucun bien ne correspond. Ajoutez un bien ou modifiez vos filtres.</td></tr>';
-    $('#listing-grid-view').innerHTML=result.map(p=>`<article class="admin-property-card">${p.image?`<img src="${p.image}" alt="${p.title}" loading="lazy">`:''}<div><h3>${p.title}</h3><small>${p.ref} · ${p.location}</small><p>${money(p)}</p><p>${typeLabel(p.type)} · ${p.area} m² · ${p.beds ?? '—'} ch. · ${p.baths ?? '—'} sdb</p><span class="status ${statusClass(p.status)}">${statusLabel(p.status)}</span><p>${p.archived?'Archivé':p.published?'Publié':'Non publié'} · ${displayDate(p.updatedAt)}</p></div><button data-action="more" data-id="${p.id}">Gérer le bien →</button></article>`).join('')||'<p>Aucun bien ne correspond.</p>';
+    $('#listing-grid-view').innerHTML=result.map(p=>`<article class="admin-property-card">${p.image?`<img src="${p.image}" alt="${p.title}" loading="lazy">`:''}<div><h3>${p.title}</h3><small>${p.ref} · ${p.location}</small><p>${money(p)}</p><p>${typeLabel(p.type)} · ${categoryLabel(p.category)} · ${p.area} m² · ${p.beds ?? '—'} ch. · ${p.baths ?? '—'} sdb</p><span class="status ${statusClass(p.status)}">${statusLabel(p.status)}</span><p>${p.archived?'Archivé':p.published?'Publié':'Non publié'} · ${displayDate(p.updatedAt)}</p></div><button data-action="more" data-id="${p.id}">Gérer le bien →</button></article>`).join('')||'<p>Aucun bien ne correspond.</p>';
     $('.management-summary b').textContent=result.length+' bien'+(result.length>1?'s':'');
   }
   filters.addEventListener('input',draw);filters.addEventListener('change',draw);
@@ -296,7 +296,7 @@ function bindEditor() {
   $$('.rich-toolbar button',form).forEach((b,i)=>{b.title=['Gras','Italique','Titre','Liste','Annuler la mise en forme'][i];b.onclick=()=>{if(i===4){if(history.length)desc.value=history.pop();}else{history.push(desc.value);const a=desc.selectionStart,z=desc.selectionEnd,selected=desc.value.slice(a,z)||'Texte',wrapped=i===0?'**'+selected+'**':i===1?'*'+selected+'*':i===2?'\n## '+selected:'\n- '+selected;desc.setRangeText(wrapped,a,z,'select');}desc.focus();cms.dirty=true;};});
   $('[data-preview-editor]').onclick=()=>{
     const p=safeProperty(collectEditor(form));
-    modal('Aperçu du bien non enregistré',`<div class="cms-preview">${$$('figure img',media).map(i=>`<img src="${escapeHtml(i.src)}" alt="Photo du bien">`).join('')}<h2>${p.title}</h2><p>${money(p)} · ${p.location}</p><p>${p.area} m² · ${p.beds} chambres · ${p.baths} salles de bain · ${typeLabel(p.type)}</p>${descriptionHtml(p.description)}<p>${p.features.join(' · ')}</p><iframe title="Localisation du bien" src="https://www.google.com/maps?q=${encodeURIComponent(p.mapLocation||p.location)}&output=embed"></iframe><a href="tel:0796265326">Contacter Kader : 0796 26 53 26</a></div>`);
+    modal('Aperçu du bien non enregistré',`<div class="cms-preview">${$$('figure img',media).map(i=>`<img src="${escapeHtml(i.src)}" alt="Photo du bien">`).join('')}<h2>${p.title}</h2><p>${money(p)} · ${p.location}</p><p>${p.area} m² · ${p.beds} chambres · ${p.baths} salles de bain · ${typeLabel(p.type)} · ${categoryLabel(p.category)}</p>${descriptionHtml(p.description)}<p>${p.features.join(' · ')}</p><iframe title="Localisation du bien" src="https://www.google.com/maps?q=${encodeURIComponent(p.mapLocation||p.location)}&output=embed"></iframe><a href="tel:0796265326">Contacter Kader : 0796 26 53 26</a></div>`);
   };
   form.onsubmit=async event=>{
     event.preventDefault();if(cms.busy)return;
@@ -334,7 +334,7 @@ setInterval(async()=>{
       $$('img',app).forEach(img=>{const next=urls.get(img.src);if(next)img.src=next;});
       cms.items=items;
       const route=currentRoute();
-      if(changed&&(route==='/'||route==='/biens'||route.startsWith('/bien/'))){
+      if(changed&&(route==='/'||route==='/biens'||route==='/biens/prestige'||route.startsWith('/bien/'))){
         const search=$('#property-search')?.value,filter=$('.filter.active')?.dataset.filter;
         const contactValues=$$('.validate-form input,.validate-form textarea',app).map(el=>[el.name,el.value]);
         const y=scrollY;paint();

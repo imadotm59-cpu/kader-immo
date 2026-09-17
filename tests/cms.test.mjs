@@ -24,7 +24,12 @@ function mockAdmin(rest){
 }
 test('normalizes existing fields and preserves feature/image order',()=>{
   const result=validateProperty({...draft,area:'480 m²',features:['Pool','Sea view'],imagePaths:[image]});
-  assert.equal(result.price,65000000);assert.equal(result.data.area,480);assert.deepEqual(result.images,[image]);assert.deepEqual(result.data.features,['Pool','Sea view']);
+  assert.equal(result.price,65000000);assert.equal(result.data.area,480);assert.equal(result.data.category,'standard');assert.deepEqual(result.images,[image]);assert.deepEqual(result.data.features,['Pool','Sea view']);
+});
+test('validates property classification and defaults legacy listings to standard',()=>{
+  assert.equal(validateProperty({...draft,category:'prestige'}).data.category,'prestige');
+  assert.equal(validateProperty(draft).data.category,'standard');
+  assert.throws(()=>validateProperty({...draft,category:'luxury'}),/Invalid property option/);
 });
 test('publishing enforces required details and Draft cannot be public',()=>{
   assert.throws(()=>validateProperty({...draft,published:true}),/availability/);
@@ -110,7 +115,7 @@ test('loading UI uses listing-card skeletons while error and empty states remain
   assert.doesNotMatch(client,/Chargement|cms-skeleton-screen/);
   for(const part of ['skeleton-property-image','skeleton-title','skeleton-price','skeleton-location','skeleton-details'])assert.match(client,new RegExp(part));
   assert.match(client,/route === '\/'\) return home\(true\)/);
-  assert.match(client,/route === '\/biens'\) return listings\(true\)/);
+  assert.match(client,/route === '\/biens' \|\| route === '\/biens\/prestige'\) return listings\(true,route === '\/biens\/prestige'\)/);
   assert.match(client,/bindLoadingChrome\(\)/);
   assert.doesNotMatch(css,/cms-skeleton-screen|min-height:100svh[^}]*skeleton/);
   assert.match(css,/@keyframes cms-shimmer/);assert.match(css,/prefers-reduced-motion/);
@@ -125,6 +130,16 @@ test('property detail route applies contrast-safe navigation and content colors'
   for(const selector of ['.detail-route .topbar','.detail-route .topbar .navlinks a','.detail-route .detail .crumbs','.detail-route .detail-title h1','.detail-route .detail-title p'])assert.match(css,new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
   assert.match(css,/:root\[data-theme="dark"\] \.detail-route \.detail\{background:#091521/);
   assert.doesNotMatch(css,/\.detail-route[^\n]*linear-gradient/);
+});
+test('prestige classification reuses existing public cards and admin workflow',async()=>{
+  const appSource=await readFile(new URL('../app.js',import.meta.url),'utf8');
+  const client=await readFile(new URL('../cms-client.js',import.meta.url),'utf8');
+  const validation=await readFile(new URL('../server/validation.js',import.meta.url),'utf8');
+  assert.match(appSource,/href="#\/biens\/prestige">Biens de prestige/);
+  assert.match(appSource,/class="badge prestige-badge">Prestige/);
+  assert.match(appSource,/Catégorie du bien<select name="category"/);
+  assert.match(client,/category:\['All','standard','prestige'\]/);
+  assert.match(validation,/category: choice\(input\.category \|\| 'standard', \['standard','prestige'\]\)/);
 });
 test('SQL enables RLS and keeps admin provisioning owner-only',async()=>{
   const sql=await readFile(new URL('../supabase/migrations/001_cms.sql',import.meta.url),'utf8');
