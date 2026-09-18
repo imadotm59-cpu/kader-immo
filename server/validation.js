@@ -24,7 +24,9 @@ export function imagePath(value) {
 }
 export function validateProperty(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new HttpError(400, 'Invalid listing.');
-  const price = number(input.price, 1e13);
+  // Keep the existing non-null database column: zero represents an intentionally
+  // unspecified price and is converted back to an empty value by the API.
+  const price = number(input.price, 1e13, true) ?? 0;
   const published = input.published === true;
   const status = choice(input.status || 'Draft', STATUSES);
   if (published && status === 'Draft') throw new HttpError(400, 'Choose an availability status before publishing.');
@@ -54,7 +56,7 @@ export function validateProperty(input) {
   };
   for (const key of ['wilaya','city','neighborhood','address','mapLocation']) data[key] = text(input[key], 500);
   for (const key of ['area','beds','baths','floor','floors','parking','year']) data[key] = number(input[key], key === 'area' ? 1e8 : 10000, true);
-  if (published && (!data.description || !images.length || !data.area || price <= 0)) throw new HttpError(400, 'Publishing requires a price, location, area, description and cover image.');
+  if (published && (!data.description || !images.length || !data.area)) throw new HttpError(400, 'Publishing requires a location, area, description and cover image.');
   return { ref: text(input.ref, 80, true), title: text(input.title, 200, true), price, status, published,
     archived: input.archived === true, featured: input.featured === true, images: images.map(imagePath), data };
 }

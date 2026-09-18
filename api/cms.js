@@ -21,7 +21,7 @@ async function present(items, token) {
       imagePaths:Array.isArray(unit.imagePaths) ? unit.imagePaths : [],
       images:(Array.isArray(unit.imagePaths) ? unit.imagePaths : []).map(path => images[item.images.indexOf(path)]).filter(Boolean) }));
     return { ...item.data, ...item, data:undefined, category:item.data.category === 'prestige' ? 'prestige' : 'standard', units, imagePaths:item.images, images, image:images[0] || '',
-      area:item.data.area == null ? '' : String(item.data.area), price:String(item.price),
+      area:item.data.area == null ? '' : String(item.data.area), price:Number(item.price) > 0 ? String(item.price) : '',
       createdAt:item.created_at, updatedAt:item.updated_at, publishedAt:item.published_at };
   }));
 }

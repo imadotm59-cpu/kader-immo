@@ -4,10 +4,14 @@ import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 const uid='22222222-2222-4222-8222-222222222222';
 const id='11111111-1111-4111-8111-111111111111';
+const idNoPrice='33333333-3333-4333-8333-333333333333';
 const stamp=()=>new Date().toISOString();
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aG7sAAAAASUVORK5CYII=','base64');
 const files=new Set([uid+'/'+id+'.png']);
-const rows=[{id,ref:'KIM-TEST-01',title:'Villa test à Canastel',price:65000000,status:'Available',published:true,archived:false,featured:true,images:[...files],data:{type:'Villa',category:'standard',transaction:'Sale',currency:'DA',location:'Canastel, Oran',area:480,beds:5,baths:4,description:'A local integration test listing.',features:['Pool','Custom test feature'],city:'Oran',neighborhood:'Canastel'},created_at:stamp(),updated_at:stamp()}];
+const rows=[
+  {id,ref:'KIM-TEST-01',title:'Villa test à Canastel',price:65000000,status:'Available',published:true,archived:false,featured:true,images:[...files],data:{type:'Villa',category:'standard',transaction:'Sale',currency:'DA',location:'Canastel, Oran',area:480,beds:5,baths:4,description:'A local integration test listing.',features:['Pool','Custom test feature'],city:'Oran',neighborhood:'Canastel'},created_at:stamp(),updated_at:stamp()},
+  {id:idNoPrice,ref:'KIM-TEST-02',title:'Résidence prestige sans prix',price:0,status:'Available',published:true,archived:false,featured:true,images:[...files],data:{type:'Apartment',category:'prestige',transaction:'Sale',currency:'DA',location:'Akid Lotfi, Oran',area:90,beds:3,baths:2,description:'A no-price integration test listing.',features:['Elevator'],city:'Oran',neighborhood:'Akid Lotfi',units:[{name:'A-01',area:75,price:null,beds:2,floor:1,status:'Available',imagePaths:[]},{name:'A-02',area:90,price:22000000,beds:3,floor:2,status:'Available',imagePaths:[]}]},created_at:stamp(),updated_at:stamp()}
+];
 process.env.SUPABASE_URL='http://127.0.0.1:4189';
 process.env.SUPABASE_ANON_KEY='sb_publishable_local_fixture';
 process.env.APP_ORIGIN='http://localhost:4188';

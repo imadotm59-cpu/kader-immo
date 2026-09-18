@@ -25,6 +25,8 @@ function mockAdmin(rest){
 test('normalizes existing fields and preserves feature/image order',()=>{
   const result=validateProperty({...draft,area:'480 m²',features:['Pool','Sea view'],imagePaths:[image]});
   assert.equal(result.price,65000000);assert.equal(result.data.area,480);assert.equal(result.data.category,'standard');assert.deepEqual(result.data.units,[]);assert.deepEqual(result.images,[image]);assert.deepEqual(result.data.features,['Pool','Sea view']);
+  assert.equal(validateProperty({...draft,price:''}).price,0);
+  assert.equal(validateProperty({...draft,price:null}).price,0);
 });
 test('validates property classification and defaults legacy listings to standard',()=>{
   assert.equal(validateProperty({...draft,category:'prestige'}).data.category,'prestige');
@@ -43,11 +45,13 @@ test('validates ordered apartment units and gallery-owned unit images',()=>{
   assert.throws(()=>validateProperty({...draft,imagePaths:[image],units:[units[0],{...units[0]}]}),/unique unit names/);
   assert.throws(()=>validateProperty({...draft,imagePaths:[image],units:[{...units[0],status:'Rented'}]}),/Invalid property option/);
   assert.throws(()=>validateProperty({...draft,units:[units[0]]}),/property gallery/);
+  assert.equal(validateProperty({...draft,units:[{...units[1],price:''}]}).data.units[0].price,null);
 });
 test('publishing enforces required details and Draft cannot be public',()=>{
   assert.throws(()=>validateProperty({...draft,published:true}),/availability/);
   assert.throws(()=>validateProperty({...draft,published:true,status:'Available',location:'Oran'}),/Publishing/);
   assert.equal(validateProperty({...draft,published:true,status:'Available',location:'Oran',area:120,description:'Description',imagePaths:[image]}).published,true);
+  assert.equal(validateProperty({...draft,price:'',published:true,status:'Available',location:'Oran',area:120,description:'Description',imagePaths:[image]}).price,0);
 });
 test('rejects invalid IDs, unsafe paths, options, prices and oversized inputs',()=>{
   for(const value of ['../../image.jpg','https://example.test/a.jpg','javascript:alert(1)'])assert.throws(()=>imagePath(value));
@@ -78,6 +82,13 @@ test('public request never uses admin cookies and explicitly filters publication
   try{const result=await run('public','GET',{},'kader_access=admin-token');assert.equal(result.code,200);assert.deepEqual(result.data.properties,[]);assert.match(result.headers['Cache-Control'],/no-store/);}
   finally{global.fetch=original;}
 });
+test('public API converts the database zero sentinel back to an unspecified price',async()=>{
+  environment();const original=global.fetch;
+  const row={...validateProperty({...draft,price:''}),id,created_at:'2026-01-01',updated_at:'2026-01-02',published_at:null};
+  global.fetch=async()=>response([row]);
+  try{const result=await run('public');assert.equal(result.code,200);assert.equal(result.data.properties[0].price,'');}
+  finally{global.fetch=original;}
+});
 test('secure login returns only email and uses HttpOnly secure cookies',async()=>{
   environment();const original=global.fetch;
   global.fetch=async url=>url.includes('/auth/v1/token')?response({user:{id:uid,email:'admin@example.test'},access_token:'test-access',refresh_token:'test-refresh',expires_in:3600}):response([{user_id:uid}]);
@@ -98,6 +109,18 @@ test('editing updates the same ID instead of creating a duplicate',async()=>{
     return response([row]);
   });
   try{const result=await run('properties','PUT',{...draft,id,title:'Updated title',updatedAt:row.updated_at},'kader_access=test');assert.equal(result.code,200);assert.equal(result.data.property.id,id);assert.equal(result.data.property.title,'Updated title');assert.ok(patched);}
+  finally{global.fetch=original;}
+});
+test('admin can create a listing without a price',async()=>{
+  environment();const original=global.fetch;
+  mockAdmin(async(url,options)=>{
+    if(options.method==='POST'){
+      const saved=JSON.parse(options.body);assert.equal(saved.price,0);
+      return response([{...saved,id,created_at:'2026-01-01',updated_at:'2026-01-01',published_at:null}]);
+    }
+    return response([]);
+  });
+  try{const result=await run('properties','POST',{...draft,price:''},'kader_access=test');assert.equal(result.code,201);assert.equal(result.data.property.price,'');}
   finally{global.fetch=original;}
 });
 test('stale edits are rejected without overwriting newer changes',async()=>{
@@ -164,6 +187,16 @@ test('multi-unit UI keeps single listings compatible and adds unit management',a
   assert.match(client,/data-unit-action="up"/);assert.match(client,/data-unit-action="down"/);assert.match(client,/data-unit-action="remove"/);
   assert.match(client,/Unit images must belong to the property gallery/);
   assert.match(client,/function safeValue\(value\)/);
+});
+test('optional prices render as a request while numeric prices keep their formatter',async()=>{
+  const appSource=await readFile(new URL('../app.js',import.meta.url),'utf8');
+  const client=await readFile(new URL('../cms-client.js',import.meta.url),'utf8');
+  assert.match(appSource,/\? 'Prix sur demande'/);
+  assert.match(appSource,/Prix \(optionnel\)/);
+  assert.match(appSource,/Laisser vide si le prix n’est pas encore défini/);
+  assert.match(appSource,/selectedUnit \? selectedUnit\.price : item\.price/);
+  assert.match(client,/price:values\.price,/);
+  assert.match(client,/Laisser vide si non défini/);
 });
 test('SQL enables RLS and keeps admin provisioning owner-only',async()=>{
   const sql=await readFile(new URL('../supabase/migrations/001_cms.sql',import.meta.url),'utf8');
