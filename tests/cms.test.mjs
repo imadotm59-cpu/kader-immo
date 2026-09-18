@@ -24,12 +24,25 @@ function mockAdmin(rest){
 }
 test('normalizes existing fields and preserves feature/image order',()=>{
   const result=validateProperty({...draft,area:'480 m²',features:['Pool','Sea view'],imagePaths:[image]});
-  assert.equal(result.price,65000000);assert.equal(result.data.area,480);assert.equal(result.data.category,'standard');assert.deepEqual(result.images,[image]);assert.deepEqual(result.data.features,['Pool','Sea view']);
+  assert.equal(result.price,65000000);assert.equal(result.data.area,480);assert.equal(result.data.category,'standard');assert.deepEqual(result.data.units,[]);assert.deepEqual(result.images,[image]);assert.deepEqual(result.data.features,['Pool','Sea view']);
 });
 test('validates property classification and defaults legacy listings to standard',()=>{
   assert.equal(validateProperty({...draft,category:'prestige'}).data.category,'prestige');
   assert.equal(validateProperty(draft).data.category,'standard');
   assert.throws(()=>validateProperty({...draft,category:'luxury'}),/Invalid property option/);
+});
+test('validates ordered apartment units and gallery-owned unit images',()=>{
+  const units=[
+    {name:'A-01',area:'75',price:'18000000',beds:'2',floor:'1',status:'Available',imagePaths:[image]},
+    {name:'A-02',area:90,price:22000000,beds:3,floor:2,status:'Reserved',imagePaths:[]},
+    {name:'A-03',area:105,price:26000000,beds:3,floor:3,status:'Sold',imagePaths:[]}
+  ];
+  const result=validateProperty({...draft,imagePaths:[image],units});
+  assert.deepEqual(result.data.units.map(unit=>unit.name),['A-01','A-02','A-03']);
+  assert.equal(result.data.units[0].area,75);assert.equal(result.data.units[1].status,'Reserved');assert.deepEqual(result.data.units[0].imagePaths,[image]);
+  assert.throws(()=>validateProperty({...draft,imagePaths:[image],units:[units[0],{...units[0]}]}),/unique unit names/);
+  assert.throws(()=>validateProperty({...draft,imagePaths:[image],units:[{...units[0],status:'Rented'}]}),/Invalid property option/);
+  assert.throws(()=>validateProperty({...draft,units:[units[0]]}),/property gallery/);
 });
 test('publishing enforces required details and Draft cannot be public',()=>{
   assert.throws(()=>validateProperty({...draft,published:true}),/availability/);
@@ -140,6 +153,17 @@ test('prestige classification reuses existing public cards and admin workflow',a
   assert.match(appSource,/Catégorie du bien<select name="category"/);
   assert.match(client,/category:\['All','standard','prestige'\]/);
   assert.match(validation,/category: choice\(input\.category \|\| 'standard', \['standard','prestige'\]\)/);
+});
+test('multi-unit UI keeps single listings compatible and adds unit management',async()=>{
+  const appSource=await readFile(new URL('../app.js',import.meta.url),'utf8');
+  const client=await readFile(new URL('../cms-client.js',import.meta.url),'utf8');
+  assert.match(appSource,/Unités \/ Appartements disponibles/);
+  assert.match(appSource,/units\.length>1/);
+  assert.match(appSource,/availableUnitsText\(item\)/);
+  assert.match(client,/function collectUnits\(form\)/);
+  assert.match(client,/data-unit-action="up"/);assert.match(client,/data-unit-action="down"/);assert.match(client,/data-unit-action="remove"/);
+  assert.match(client,/Unit images must belong to the property gallery/);
+  assert.match(client,/function safeValue\(value\)/);
 });
 test('SQL enables RLS and keeps admin provisioning owner-only',async()=>{
   const sql=await readFile(new URL('../supabase/migrations/001_cms.sql',import.meta.url),'utf8');

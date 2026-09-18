@@ -2,7 +2,7 @@
 const cms = { items:[], user:null, generation:0, dirty:false, busy:false, search:'' };
 function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 const cmsMessageTranslations = {
-  'Invalid property ID.':'Identifiant du bien invalide.','Missing required text.':'Un texte obligatoire est manquant.','Invalid numeric value.':'Valeur numérique invalide.','Invalid property option.':'Option de bien invalide.','Invalid image path.':'Chemin de la photo invalide.','Invalid listing.':'Bien invalide.','Choose an availability status before publishing.':'Choisissez un statut de disponibilité avant de publier.','Use up to 20 unique images.':'Ajoutez au maximum 20 photos différentes.','Use up to 40 features.':'Ajoutez au maximum 40 équipements.','Publishing requires a price, location, area, description and cover image.':'La publication nécessite un prix, une localisation, une surface, une description et une photo de couverture.','Upload a JPEG, PNG or WebP under 2 MB.':'Ajoutez une image JPEG, PNG ou WebP de moins de 2 Mo.','Image must be under 2 MB.':'La photo doit peser moins de 2 Mo.','Only JPEG, PNG and WebP images are supported.':'Seules les images JPEG, PNG et WebP sont acceptées.','CMS configuration is missing. Follow the production setup guide.':'La configuration du CMS est incomplète. Consultez le guide de mise en production.','Use a publishable or anon key, never a service-role key.':'Utilisez une clé publique ou anonyme, jamais une clé de rôle de service.','This reference already exists. Choose another reference.':'Cette référence existe déjà. Choisissez-en une autre.','Your session expired. Please sign in again.':'Votre session a expiré. Veuillez vous reconnecter.','Access denied.':'Accès refusé.','Database or storage request failed. Please retry.':'La requête vers la base de données ou le stockage a échoué. Veuillez réessayer.','Please sign in again.':'Veuillez vous reconnecter.','Please sign in.':'Veuillez vous connecter.','This account has no administrator access.':'Ce compte ne dispose pas des droits d’administration.','Request origin is not allowed.':'L’origine de la requête n’est pas autorisée.','JSON required.':'Une requête JSON est requise.','Invalid JSON request.':'Requête JSON invalide.','Invalid request.':'Requête invalide.','Request is too large.':'La requête est trop volumineuse.','Enter your email and password.':'Saisissez votre adresse e-mail et votre mot de passe.','Invalid email or password.':'Adresse e-mail ou mot de passe incorrect.','Property not found.':'Bien introuvable.','This listing changed in another session. Reload before editing again.':'Ce bien a été modifié dans une autre session. Rechargez la page avant de reprendre vos modifications.','Listing saved; unused image cleanup failed. Retry cleanup from the media library.':'Le bien a été enregistré, mais le nettoyage des photos inutilisées a échoué. Réessayez depuis la médiathèque.','Listing deleted; some unused files remain in the media library.':'Le bien a été supprimé, mais certains fichiers inutilisés restent dans la médiathèque.','Remove this image from all listings and save them first.':'Retirez cette photo de tous les biens, puis enregistrez-les avant de la supprimer.','Unsupported operation.':'Opération non prise en charge.'
+  'Invalid property ID.':'Identifiant du bien invalide.','Missing required text.':'Un texte obligatoire est manquant.','Invalid numeric value.':'Valeur numérique invalide.','Invalid property option.':'Option de bien invalide.','Invalid image path.':'Chemin de la photo invalide.','Invalid listing.':'Bien invalide.','Invalid unit.':'Unité invalide.','Choose an availability status before publishing.':'Choisissez un statut de disponibilité avant de publier.','Use up to 20 unique images.':'Ajoutez au maximum 20 photos différentes.','Use up to 20 unique unit images.':'Associez au maximum 20 photos différentes par unité.','Use up to 40 features.':'Ajoutez au maximum 40 équipements.','Use up to 50 units.':'Ajoutez au maximum 50 unités.','Use unique unit names.':'Utilisez un nom ou une référence unique pour chaque unité.','Unit images must belong to the property gallery.':'Les photos d’une unité doivent provenir de la galerie du bien.','Publishing requires a price, location, area, description and cover image.':'La publication nécessite un prix, une localisation, une surface, une description et une photo de couverture.','Upload a JPEG, PNG or WebP under 2 MB.':'Ajoutez une image JPEG, PNG ou WebP de moins de 2 Mo.','Image must be under 2 MB.':'La photo doit peser moins de 2 Mo.','Only JPEG, PNG and WebP images are supported.':'Seules les images JPEG, PNG et WebP sont acceptées.','CMS configuration is missing. Follow the production setup guide.':'La configuration du CMS est incomplète. Consultez le guide de mise en production.','Use a publishable or anon key, never a service-role key.':'Utilisez une clé publique ou anonyme, jamais une clé de rôle de service.','This reference already exists. Choose another reference.':'Cette référence existe déjà. Choisissez-en une autre.','Your session expired. Please sign in again.':'Votre session a expiré. Veuillez vous reconnecter.','Access denied.':'Accès refusé.','Database or storage request failed. Please retry.':'La requête vers la base de données ou le stockage a échoué. Veuillez réessayer.','Please sign in again.':'Veuillez vous reconnecter.','Please sign in.':'Veuillez vous connecter.','This account has no administrator access.':'Ce compte ne dispose pas des droits d’administration.','Request origin is not allowed.':'L’origine de la requête n’est pas autorisée.','JSON required.':'Une requête JSON est requise.','Invalid JSON request.':'Requête JSON invalide.','Invalid request.':'Requête invalide.','Request is too large.':'La requête est trop volumineuse.','Enter your email and password.':'Saisissez votre adresse e-mail et votre mot de passe.','Invalid email or password.':'Adresse e-mail ou mot de passe incorrect.','Property not found.':'Bien introuvable.','This listing changed in another session. Reload before editing again.':'Ce bien a été modifié dans une autre session. Rechargez la page avant de reprendre vos modifications.','Listing saved; unused image cleanup failed. Retry cleanup from the media library.':'Le bien a été enregistré, mais le nettoyage des photos inutilisées a échoué. Réessayez depuis la médiathèque.','Listing deleted; some unused files remain in the media library.':'Le bien a été supprimé, mais certains fichiers inutilisés restent dans la médiathèque.','Remove this image from all listings and save them first.':'Retirez cette photo de tous les biens, puis enregistrez-les avant de la supprimer.','Unsupported operation.':'Opération non prise en charge.'
 };
 function cmsMessage(message) {
   const text=String(message||'');
@@ -10,9 +10,12 @@ function cmsMessage(message) {
   const length=text.match(/^Text must contain (\d+)–(\d+) characters\.$/);
   return length?`Le texte doit contenir entre ${length[1]} et ${length[2]} caractères.`:text;
 }
-function safeProperty(item) {
-  return {category:'standard',...Object.fromEntries(Object.entries(item).map(([key,value])=>[key,Array.isArray(value)?value.map(v=>typeof v==='string'?escapeHtml(v):v):typeof value==='string'?escapeHtml(value):value]))};
+function safeValue(value) {
+  if(Array.isArray(value))return value.map(safeValue);
+  if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).map(([key,item])=>[key,safeValue(item)]));
+  return typeof value==='string'?escapeHtml(value):value;
 }
+function safeProperty(item) { return {category:'standard',units:[],...safeValue(item)}; }
 function descriptionHtml(escaped) {
   // Tiny Markdown subset. Input MUST already be escaped; raw HTML is never rendered.
   return String(escaped || '').split('\n').map(line=>{
@@ -95,7 +98,7 @@ function setBusy(form,busy) { cms.busy=busy;$$('button,input,select,textarea',fo
 function paint() {
   const route=currentRoute();
   app.innerHTML=route.startsWith('/admin')?adminDashboard():route==='/biens'||route==='/biens/prestige'?listings(false,route==='/biens/prestige'):route.startsWith('/bien/')?detail(route.split('/')[2]):route==='/agence'?agency():route==='/services'?services():route==='/contact'?contact():home();
-  bindGlobal();bindForms();bindListings();bindCMS();
+  bindGlobal();bindForms();bindListings();bindUnits();bindCMS();
   $('.rich-text')?.setAttribute('aria-label','Description du bien');
   $('#global-search')?.setAttribute('aria-label','Rechercher dans tous les biens puis appuyer sur Entrée');
   $('#listing-search')?.setAttribute('aria-label','Rechercher des biens');
@@ -235,12 +238,23 @@ function bindManagement() {
   filters.addEventListener('input',draw);filters.addEventListener('change',draw);
   $$('[data-view]').forEach(b=>{b.setAttribute('aria-label',b.dataset.view==='grid'?'Vue en grille':'Vue en tableau');b.onclick=()=>{$('.table-view').classList.toggle('hidden',b.dataset.view==='grid');$('#listing-grid-view').classList.toggle('hidden',b.dataset.view==='table');$$('[data-view]').forEach(x=>x.classList.toggle('active',x===b));};});draw();
 }
+function collectUnits(form) {
+  return $$('.unit-editor-card',form).map(card=>({
+    name:$('[data-unit-field="name"]',card).value,
+    area:$('[data-unit-field="area"]',card).value,
+    price:$('[data-unit-field="price"]',card).value,
+    beds:$('[data-unit-field="beds"]',card).value,
+    floor:$('[data-unit-field="floor"]',card).value,
+    status:$('[data-unit-field="status"]',card).value,
+    imagePaths:$$('[data-unit-image]:checked',card).map(input=>input.value)
+  }));
+}
 function collectEditor(form,mode='changes') {
   const values=Object.fromEntries(new FormData(form)),id=form.dataset.id,old=cms.items.find(p=>p.id===id)||{};
   return {...old,...values,id:id||undefined,price:values.price || '0',featured:form.elements.featured.checked,
     published:mode==='publish'?true:mode==='draft'?false:form.elements.published.checked,
     status:mode==='draft'?'Draft':values.status,archived:mode==='publish'?false:old.archived||false,
-    location:[values.neighborhood,values.city].filter(Boolean).join(', '),
+    location:[values.neighborhood,values.city].filter(Boolean).join(', '), units:collectUnits(form),
     features:$$('.feature-token.selected',form).map(b=>b.dataset.feature),imagePaths:$$('#media-grid figure',form).map(f=>f.dataset.path)};
 }
 function readImage(file) {
@@ -255,7 +269,8 @@ function bindEditor() {
   const form=$('#property-editor-v2');if(!form)return;
   const media=$('#media-grid'),uploader=$('#image-uploader');
   $('#image-uploader').accept='image/jpeg,image/png,image/webp';
-  const renumber=()=>$$('figure',media).forEach((f,i)=>{$('figcaption',f).textContent=i===0?'Photo de couverture':'Photo '+(i+1);});
+  let refreshUnitImages=()=>{};
+  const renumber=()=>{$$('figure',media).forEach((f,i)=>{$('figcaption',f).textContent=i===0?'Photo de couverture':'Photo '+(i+1);});refreshUnitImages();};
   $$('figure',media).forEach(f=>f.replaceWith(mediaFigure(f.dataset.path,$('img',f).getAttribute('src'))));renumber();
   form.addEventListener('input',()=>cms.dirty=true);
   async function upload(files,replace){
@@ -283,6 +298,37 @@ function bindEditor() {
   media.ondrop=event=>{event.preventDefault();const target=event.target.closest('figure');if(dragged&&target&&dragged!==target){media.insertBefore(dragged,target);cms.dirty=true;renumber();}dragged=null;};
   // Keep custom features when reopening existing listings.
   const old=cms.items.find(p=>p.id===form.dataset.id);
+  const unitList=$('#unit-editor-list',form),unitCount=$('#available-unit-count',form);
+  const updateUnitCount=()=>{const count=$$('.unit-editor-card',unitList).filter(card=>$('[data-unit-field="status"]',card).value==='Available').length;unitCount.textContent=count===1?'1 appartement disponible':`${count} appartements disponibles`;};
+  const unitCard=(unit={})=>{
+    const card=document.createElement('article');card.className='unit-editor-card';card._selectedImages=new Set(unit.imagePaths||[]);
+    card.innerHTML=`<div class="unit-card-head"><strong>Unité</strong><div><button type="button" data-unit-action="up" aria-label="Déplacer l’unité vers le haut">↑</button><button type="button" data-unit-action="down" aria-label="Déplacer l’unité vers le bas">↓</button><button type="button" data-unit-action="remove" aria-label="Supprimer l’unité">×</button></div></div><div class="unit-fields"><label class="unit-name">Nom / Référence de l’unité<input data-unit-field="name" value="${escapeHtml(unit.name||'')}" maxlength="100" placeholder="Ex. : Appartement A-01" required></label><label>Surface (m²)<input data-unit-field="area" type="number" min="0" value="${unit.area??''}"></label><label>Prix<input data-unit-field="price" inputmode="decimal" value="${unit.price??''}"></label><label>Chambres<input data-unit-field="beds" type="number" min="0" value="${unit.beds??''}"></label><label>Étage<input data-unit-field="floor" type="number" min="0" value="${unit.floor??''}"></label><label>Statut<select data-unit-field="status"><option value="Available" ${unit.status!=='Sold'&&unit.status!=='Reserved'?'selected':''}>Disponible</option><option value="Sold" ${unit.status==='Sold'?'selected':''}>Vendu</option><option value="Reserved" ${unit.status==='Reserved'?'selected':''}>Réservé</option></select></label></div><details class="unit-images"><summary>Photos spécifiques (<span>0</span>)</summary><div class="unit-image-options"></div><small>Facultatif — choisissez des photos déjà ajoutées à la galerie du bien.</small></details>`;
+    return card;
+  };
+  refreshUnitImages=()=>{
+    const figures=$$('figure',media).map((figure,index)=>({path:figure.dataset.path,url:$('img',figure).src,label:index===0?'Photo de couverture':'Photo '+(index+1)}));
+    $$('.unit-editor-card',unitList).forEach(card=>{
+      const existing=$$('[data-unit-image]:checked',card).map(input=>input.value),selected=new Set(existing.length||$$('[data-unit-image]',card).length?existing:[...card._selectedImages]);
+      card._selectedImages=selected;
+      const options=$('.unit-image-options',card);
+      options.innerHTML=figures.length?figures.map(image=>`<label><input type="checkbox" data-unit-image value="${escapeHtml(image.path)}" ${selected.has(image.path)?'checked':''}><img src="${escapeHtml(image.url)}" alt=""><span>${image.label}</span></label>`).join(''):'<p>Ajoutez d’abord des photos dans la galerie du bien.</p>';
+      $('.unit-images summary span',card).textContent=figures.filter(image=>selected.has(image.path)).length;
+    });
+  };
+  for(const unit of old?.units||[])unitList.append(unitCard(unit));
+  refreshUnitImages();updateUnitCount();
+  $('#add-unit',form).onclick=()=>{if($$('.unit-editor-card',unitList).length>=50){formError(form,'Vous pouvez ajouter au maximum 50 unités.');return;}unitList.append(unitCard());refreshUnitImages();updateUnitCount();cms.dirty=true;};
+  const updateUnitControl=event=>{if(event.target.matches('[data-unit-field="status"]'))updateUnitCount();if(event.target.matches('[data-unit-image]'))$('.unit-images summary span',event.target.closest('.unit-editor-card')).textContent=$$('[data-unit-image]:checked',event.target.closest('.unit-editor-card')).length;};
+  unitList.addEventListener('input',updateUnitControl);
+  unitList.addEventListener('change',updateUnitControl);
+  unitList.addEventListener('click',async event=>{
+    const button=event.target.closest('[data-unit-action]');if(!button)return;
+    const card=button.closest('.unit-editor-card'),action=button.dataset.unitAction;
+    if(action==='remove'){if(!await confirmAction('Retirer cette unité de l’annonce ?'))return;card.remove();}
+    if(action==='up'&&card.previousElementSibling)unitList.insertBefore(card,card.previousElementSibling);
+    if(action==='down'&&card.nextElementSibling)unitList.insertBefore(card.nextElementSibling,card);
+    updateUnitCount();cms.dirty=true;
+  });
   for(const feature of old?.features||[])if(!$$('[data-feature]',form).some(b=>b.dataset.feature===feature))addFeature(feature);
   function addFeature(value){const b=document.createElement('button');b.type='button';b.className='feature-token selected';b.dataset.feature=value;b.textContent='✓ '+value;$('.custom-feature',form).before(b);}
   $('.feature-list',form).onclick=event=>{
@@ -296,12 +342,13 @@ function bindEditor() {
   $$('.rich-toolbar button',form).forEach((b,i)=>{b.title=['Gras','Italique','Titre','Liste','Annuler la mise en forme'][i];b.onclick=()=>{if(i===4){if(history.length)desc.value=history.pop();}else{history.push(desc.value);const a=desc.selectionStart,z=desc.selectionEnd,selected=desc.value.slice(a,z)||'Texte',wrapped=i===0?'**'+selected+'**':i===1?'*'+selected+'*':i===2?'\n## '+selected:'\n- '+selected;desc.setRangeText(wrapped,a,z,'select');}desc.focus();cms.dirty=true;};});
   $('[data-preview-editor]').onclick=()=>{
     const p=safeProperty(collectEditor(form));
-    modal('Aperçu du bien non enregistré',`<div class="cms-preview">${$$('figure img',media).map(i=>`<img src="${escapeHtml(i.src)}" alt="Photo du bien">`).join('')}<h2>${p.title}</h2><p>${money(p)} · ${p.location}</p><p>${p.area} m² · ${p.beds} chambres · ${p.baths} salles de bain · ${typeLabel(p.type)} · ${categoryLabel(p.category)}</p>${descriptionHtml(p.description)}<p>${p.features.join(' · ')}</p><iframe title="Localisation du bien" src="https://www.google.com/maps?q=${encodeURIComponent(p.mapLocation||p.location)}&output=embed"></iframe><a href="tel:0796265326">Contacter Kader : 0796 26 53 26</a></div>`);
+    modal('Aperçu du bien non enregistré',`<div class="cms-preview">${$$('figure img',media).map(i=>`<img src="${escapeHtml(i.src)}" alt="Photo du bien">`).join('')}<h2>${p.title}</h2><p>${money(p)} · ${p.location}</p><p>${p.area} m² · ${p.beds} chambres · ${p.baths} salles de bain · ${typeLabel(p.type)} · ${categoryLabel(p.category)}</p>${p.units.length?`<p><strong>${availableUnitsText(p)}</strong></p>`:''}${descriptionHtml(p.description)}<p>${p.features.join(' · ')}</p><iframe title="Localisation du bien" src="https://www.google.com/maps?q=${encodeURIComponent(p.mapLocation||p.location)}&output=embed"></iframe><a href="tel:0796265326">Contacter Kader : 0796 26 53 26</a></div>`);
   };
   form.onsubmit=async event=>{
     event.preventDefault();if(cms.busy)return;
     const mode=event.submitter?.dataset.save||'changes',data=collectEditor(form,mode);
     if(!data.title.trim()||!data.ref.trim()){formError(form,'Le titre et la référence du bien sont obligatoires.');return;}
+    if(data.units.some(unit=>!unit.name.trim())){formError(form,'Chaque unité doit avoir un nom ou une référence.');return;}
     if(data.published&&!await confirmAction('Enregistrer et rendre ce bien visible sur le site public ?'))return;
     setBusy(form,true);
     try{const result=await api('properties',data.id?'PUT':'POST',data);cms.dirty=false;message(cmsMessage(result.warning)||'Bien enregistré avec succès.');navigate('/admin/listings');}

@@ -17,7 +17,10 @@ async function signed(path, token) {
 async function present(items, token) {
   return Promise.all(items.map(async item => {
     const images = await Promise.all(item.images.map(async path => { try { return await signed(path, token); } catch { return ''; } }));
-    return { ...item.data, ...item, data:undefined, category:item.data.category === 'prestige' ? 'prestige' : 'standard', imagePaths:item.images, images, image:images[0] || '',
+    const units = (Array.isArray(item.data.units) ? item.data.units : []).map(unit => ({...unit,
+      imagePaths:Array.isArray(unit.imagePaths) ? unit.imagePaths : [],
+      images:(Array.isArray(unit.imagePaths) ? unit.imagePaths : []).map(path => images[item.images.indexOf(path)]).filter(Boolean) }));
+    return { ...item.data, ...item, data:undefined, category:item.data.category === 'prestige' ? 'prestige' : 'standard', units, imagePaths:item.images, images, image:images[0] || '',
       area:item.data.area == null ? '' : String(item.data.area), price:String(item.price),
       createdAt:item.created_at, updatedAt:item.updated_at, publishedAt:item.published_at };
   }));

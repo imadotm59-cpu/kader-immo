@@ -32,12 +32,25 @@ export function validateProperty(input) {
   if (!Array.isArray(images) || images.length > 20 || new Set(images).size !== images.length) throw new HttpError(400, 'Use up to 20 unique images.');
   const features = input.features || [];
   if (!Array.isArray(features) || features.length > 40) throw new HttpError(400, 'Use up to 40 features.');
+  const sourceUnits = input.units || [];
+  if (!Array.isArray(sourceUnits) || sourceUnits.length > 50) throw new HttpError(400, 'Use up to 50 units.');
+  const units = sourceUnits.map(unit => {
+    if (!unit || typeof unit !== 'object' || Array.isArray(unit)) throw new HttpError(400, 'Invalid unit.');
+    const unitImages = unit.imagePaths || [];
+    if (!Array.isArray(unitImages) || unitImages.length > 20 || new Set(unitImages).size !== unitImages.length) throw new HttpError(400, 'Use up to 20 unique unit images.');
+    const imagePaths = unitImages.map(imagePath);
+    if (imagePaths.some(path => !images.includes(path))) throw new HttpError(400, 'Unit images must belong to the property gallery.');
+    return { name:text(unit.name, 100, true), area:number(unit.area, 1e8, true), price:number(unit.price, 1e13, true),
+      beds:number(unit.beds, 10000, true), floor:number(unit.floor, 10000, true),
+      status:choice(unit.status || 'Available', ['Available','Sold','Reserved']), imagePaths };
+  });
+  if (new Set(units.map(unit => unit.name.toLocaleLowerCase())).size !== units.length) throw new HttpError(400, 'Use unique unit names.');
   const data = {
     type: choice(input.type || 'Villa', TYPES), transaction: choice(input.transaction || 'Sale', ['Sale','Rent']),
     category: choice(input.category || 'standard', ['standard','prestige']),
     currency: choice(input.currency || 'DA', ['DA','EUR','USD']), description: text(input.description, 20000),
     location: text(input.location || input.neighborhood || input.city, 300, published),
-    features: features.map(f => text(f, 80, true))
+    features: features.map(f => text(f, 80, true)), units
   };
   for (const key of ['wilaya','city','neighborhood','address','mapLocation']) data[key] = text(input[key], 500);
   for (const key of ['area','beds','baths','floor','floors','parking','year']) data[key] = number(input[key], key === 'area' ? 1e8 : 10000, true);
