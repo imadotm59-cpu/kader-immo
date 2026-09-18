@@ -1,4 +1,4 @@
-const TYPES = ['Apartment','Villa','House','Maison','Duplex','Land','Commercial','Office','Other'];
+const TYPES = ['Apartment','Villa','Duplex','Penthouse','House','Maison','Land','Commercial','Office','Other'];
 const STATUSES = ['Available','Sold','Rented','Draft'];
 export class HttpError extends Error { constructor(status, message) { super(message); this.status = status; } }
 export function uuid(value) {

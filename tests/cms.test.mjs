@@ -32,6 +32,10 @@ test('validates property classification and defaults legacy listings to standard
   assert.equal(validateProperty({...draft,category:'prestige'}).data.category,'prestige');
   assert.equal(validateProperty(draft).data.category,'standard');
   assert.throws(()=>validateProperty({...draft,category:'luxury'}),/Invalid property option/);
+  for(const type of ['Apartment','Villa','Duplex','Penthouse'])for(const category of ['standard','prestige']){
+    const result=validateProperty({...draft,type,category});
+    assert.equal(result.data.type,type);assert.equal(result.data.category,category);
+  }
 });
 test('validates ordered apartment units and gallery-owned unit images',()=>{
   const units=[
@@ -171,11 +175,20 @@ test('prestige classification reuses existing public cards and admin workflow',a
   const appSource=await readFile(new URL('../app.js',import.meta.url),'utf8');
   const client=await readFile(new URL('../cms-client.js',import.meta.url),'utf8');
   const validation=await readFile(new URL('../server/validation.js',import.meta.url),'utf8');
+  const css=await readFile(new URL('../styles.css',import.meta.url),'utf8');
   assert.match(appSource,/href="#\/biens\/prestige">Biens de prestige/);
   assert.match(appSource,/class="badge prestige-badge">Prestige/);
-  assert.match(appSource,/Catégorie du bien<select name="category"/);
+  assert.match(appSource,/Gamme \/ Catégorie<select name="category"/);
+  assert.match(appSource,/data-type="Apartment"/);assert.match(appSource,/data-type="Penthouse"/);
+  assert.match(appSource,/data-category="standard"/);assert.match(appSource,/data-category="prestige"/);
+  assert.doesNotMatch(appSource,/data-filter="Prestige"/);
+  assert.match(appSource,/class="type">\$\{typeLabel\(p\.type\)\}/);
   assert.match(client,/category:\['All','standard','prestige'\]/);
+  assert.match(client,/type:\['All','Apartment','Villa','Duplex','Penthouse'/);
+  assert.match(client,/category:'Gamme \/ Catégorie'/);
+  assert.match(validation,/const TYPES = \['Apartment','Villa','Duplex','Penthouse'/);
   assert.match(validation,/category: choice\(input\.category \|\| 'standard', \['standard','prestige'\]\)/);
+  assert.match(css,/\.filterbar \.filters\{flex:1 1 100%/);
 });
 test('multi-unit UI keeps single listings compatible and adds unit management',async()=>{
   const appSource=await readFile(new URL('../app.js',import.meta.url),'utf8');

@@ -218,10 +218,10 @@ function bindManagement() {
   const search=$('#listing-search');if(!search)return;
   const filters=$('.listing-filters');
   $$('[data-filter-menu]',filters).forEach(b=>b.remove());
-  const choices={category:['All','standard','prestige'],status:['All','Published','Unpublished','Available','Sold','Rented','Draft','Archived'],type:['All','Apartment','Villa','House','Maison','Duplex','Land','Commercial','Office','Other'],transaction:['All','Sale','Rent']};
+  const choices={category:['All','standard','prestige'],status:['All','Published','Unpublished','Available','Sold','Rented','Draft','Archived'],type:['All','Apartment','Villa','Duplex','Penthouse','House','Maison','Land','Commercial','Office','Other'],transaction:['All','Sale','Rent']};
   search.value=cms.search;
   Object.entries(choices).forEach(([name,values])=>{
-    const label=document.createElement('label');label.className='cms-filter';label.textContent={category:'Catégorie',status:'Statut',type:'Type de bien',transaction:'Transaction'}[name];
+    const label=document.createElement('label');label.className='cms-filter';label.textContent={category:'Gamme / Catégorie',status:'Statut',type:'Type de bien',transaction:'Transaction'}[name];
     const select=document.createElement('select');select.name=name;values.forEach(v=>select.add(new Option(v==='All'?'Tous':name==='category'?categoryLabel(v):name==='status'?statusLabel(v):name==='type'?typeLabel(v):transactionLabel(v),v)));label.append(select);filters.append(label);
   });
   for(const [name,label,type] of [['location','Localisation','search'],['min','Prix minimum','number'],['max','Prix maximum','number'],['beds','Chambres (minimum)','number']])filters.insertAdjacentHTML('beforeend',`<label class="cms-filter">${label}<input name="${name}" type="${type}" min="0"></label>`);
