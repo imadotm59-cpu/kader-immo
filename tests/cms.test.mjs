@@ -171,6 +171,20 @@ test('property detail route applies contrast-safe navigation and content colors'
   assert.match(css,/:root\[data-theme="dark"\] \.detail-route \.detail\{background:#091521/);
   assert.doesNotMatch(css,/\.detail-route[^\n]*linear-gradient/);
 });
+test('property gallery opens an accessible fullscreen lightbox without changing thumbnail crops',async()=>{
+  const appSource=await readFile(new URL('../app.js',import.meta.url),'utf8');
+  const client=await readFile(new URL('../cms-client.js',import.meta.url),'utf8');
+  const css=await readFile(new URL('../styles.css',import.meta.url),'utf8');
+  assert.match(client,/bindPropertyLightbox\(\)/);
+  assert.match(appSource,/function bindPropertyLightbox\(\)/);
+  assert.match(appSource,/aria-modal/);assert.match(appSource,/event\.key==='Escape'/);
+  assert.match(appSource,/event\.key==='ArrowLeft'/);assert.match(appSource,/event\.key==='ArrowRight'/);
+  assert.match(appSource,/touchstart/);assert.match(appSource,/touchend/);
+  assert.match(appSource,/classList\.add\('lightbox-open'\)/);assert.match(appSource,/classList\.remove\('lightbox-open'\)/);
+  assert.match(css,/\.property-lightbox\{position:fixed;inset:0/);
+  assert.match(css,/\.lightbox-image[^}]*object-fit:contain/);
+  assert.match(css,/\.gallery img\{width:100%;height:100%;object-fit:cover/);
+});
 test('prestige classification reuses existing public cards and admin workflow',async()=>{
   const appSource=await readFile(new URL('../app.js',import.meta.url),'utf8');
   const client=await readFile(new URL('../cms-client.js',import.meta.url),'utf8');

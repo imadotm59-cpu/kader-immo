@@ -7,7 +7,8 @@ const id='11111111-1111-4111-8111-111111111111';
 const idNoPrice='33333333-3333-4333-8333-333333333333';
 const stamp=()=>new Date().toISOString();
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aG7sAAAAASUVORK5CYII=','base64');
-const files=new Set([uid+'/'+id+'.png']);
+const primaryImage=uid+'/'+id+'.png',secondImage=uid+'/44444444-4444-4444-8444-444444444444.png';
+const files=new Set([primaryImage,secondImage]);
 const combinationRows=[
   ['KIM-TEST-03','Appartement Standard','Apartment','standard'],
   ['KIM-TEST-04','Villa Prestige','Villa','prestige'],
@@ -15,10 +16,10 @@ const combinationRows=[
   ['KIM-TEST-06','Duplex Prestige','Duplex','prestige'],
   ['KIM-TEST-07','Penthouse Standard','Penthouse','standard'],
   ['KIM-TEST-08','Penthouse Prestige','Penthouse','prestige']
-].map(([ref,title,type,category],index)=>({id:randomUUID(),ref,title,price:30000000+index*1000000,status:'Available',published:true,archived:false,featured:false,images:[...files],data:{type,category,transaction:'Sale',currency:'DA',location:'Oran Centre, Oran',area:120,beds:3,baths:2,description:'A type and category integration test listing.',features:[],city:'Oran',neighborhood:'Oran Centre'},created_at:stamp(),updated_at:stamp()}));
+].map(([ref,title,type,category],index)=>({id:randomUUID(),ref,title,price:30000000+index*1000000,status:'Available',published:true,archived:false,featured:false,images:[primaryImage],data:{type,category,transaction:'Sale',currency:'DA',location:'Oran Centre, Oran',area:120,beds:3,baths:2,description:'A type and category integration test listing.',features:[],city:'Oran',neighborhood:'Oran Centre'},created_at:stamp(),updated_at:stamp()}));
 const rows=[
   {id,ref:'KIM-TEST-01',title:'Villa test à Canastel',price:65000000,status:'Available',published:true,archived:false,featured:true,images:[...files],data:{type:'Villa',category:'standard',transaction:'Sale',currency:'DA',location:'Canastel, Oran',area:480,beds:5,baths:4,description:'A local integration test listing.',features:['Pool','Custom test feature'],city:'Oran',neighborhood:'Canastel'},created_at:stamp(),updated_at:stamp()},
-  {id:idNoPrice,ref:'KIM-TEST-02',title:'Résidence prestige sans prix',price:0,status:'Available',published:true,archived:false,featured:true,images:[...files],data:{type:'Apartment',category:'prestige',transaction:'Sale',currency:'DA',location:'Akid Lotfi, Oran',area:90,beds:3,baths:2,description:'A no-price integration test listing.',features:['Elevator'],city:'Oran',neighborhood:'Akid Lotfi',units:[{name:'A-01',area:75,price:null,beds:2,floor:1,status:'Available',imagePaths:[]},{name:'A-02',area:90,price:22000000,beds:3,floor:2,status:'Available',imagePaths:[]}]},created_at:stamp(),updated_at:stamp()},
+  {id:idNoPrice,ref:'KIM-TEST-02',title:'Résidence prestige sans prix',price:0,status:'Available',published:true,archived:false,featured:true,images:[primaryImage],data:{type:'Apartment',category:'prestige',transaction:'Sale',currency:'DA',location:'Akid Lotfi, Oran',area:90,beds:3,baths:2,description:'A no-price integration test listing.',features:['Elevator'],city:'Oran',neighborhood:'Akid Lotfi',units:[{name:'A-01',area:75,price:null,beds:2,floor:1,status:'Available',imagePaths:[]},{name:'A-02',area:90,price:22000000,beds:3,floor:2,status:'Available',imagePaths:[]}]},created_at:stamp(),updated_at:stamp()},
   ...combinationRows
 ];
 process.env.SUPABASE_URL='http://127.0.0.1:4189';

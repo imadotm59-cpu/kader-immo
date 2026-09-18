@@ -197,7 +197,50 @@ function bindUnits() {
     $('#unit-floor').textContent=unit.floor??item.floor??'—';
     const images=unit.images?.filter(Boolean).length?unit.images:item.images;
     $('.gallery').innerHTML=images.filter(Boolean).map((image,index)=>`<div><img src="${image}" alt="${item.title} — vue ${index+1}"></div>`).join('');
+    prepareLightboxImages($('.gallery'));
   }));
+}
+function prepareLightboxImages(gallery) {
+  if(!gallery)return;
+  $$('img',gallery).forEach((image,index)=>{
+    image.tabIndex=0;image.setAttribute('role','button');image.setAttribute('aria-label',`Agrandir la photo ${index+1}`);
+  });
+}
+function bindPropertyLightbox() {
+  const gallery=$('.detail .gallery');if(!gallery)return;
+  prepareLightboxImages(gallery);
+  const slides=()=>$$('img',gallery).map(image=>({src:image.currentSrc||image.src,alt:image.alt||'Photo du bien'}));
+  let overlay,index=0,returnFocus,touchStartX=0;
+  const update=()=>{
+    const items=slides();if(!items.length)return;
+    index=(index+items.length)%items.length;
+    const image=$('.lightbox-image',overlay);image.src=items[index].src;image.alt=items[index].alt;
+    $('.lightbox-count',overlay).textContent=`${index+1} / ${items.length}`;
+    $$('.lightbox-nav',overlay).forEach(button=>button.hidden=items.length<2);
+  };
+  const close=()=>{
+    if(!overlay)return;document.removeEventListener('keydown',onKey);document.body.classList.remove('lightbox-open');overlay.remove();overlay=null;returnFocus?.focus();
+  };
+  const move=step=>{index+=step;update();};
+  const onKey=event=>{
+    if(event.key==='Escape'){event.preventDefault();close();}
+    if(event.key==='ArrowLeft'&&slides().length>1){event.preventDefault();move(-1);}
+    if(event.key==='ArrowRight'&&slides().length>1){event.preventDefault();move(1);}
+    if(event.key==='Tab'&&overlay){const controls=$$('button:not([hidden])',overlay);if(!controls.length)return;const first=controls[0],last=controls.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}}
+  };
+  const open=selected=>{
+    if(overlay||!slides().length)return;index=selected;returnFocus=document.activeElement;
+    overlay=document.createElement('div');overlay.className='property-lightbox';overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-label','Visionneuse des photos du bien');
+    overlay.innerHTML='<button class="lightbox-close" type="button" aria-label="Fermer la visionneuse">×</button><button class="lightbox-nav lightbox-prev" type="button" aria-label="Photo précédente">‹</button><div class="lightbox-stage"><img class="lightbox-image" alt=""><span class="lightbox-count" aria-live="polite"></span></div><button class="lightbox-nav lightbox-next" type="button" aria-label="Photo suivante">›</button>';
+    document.body.append(overlay);document.body.classList.add('lightbox-open');update();
+    $('.lightbox-close',overlay).onclick=close;$('.lightbox-prev',overlay).onclick=()=>move(-1);$('.lightbox-next',overlay).onclick=()=>move(1);
+    overlay.addEventListener('click',event=>{if(event.target===overlay||event.target.classList.contains('lightbox-stage'))close();});
+    overlay.addEventListener('touchstart',event=>{touchStartX=event.changedTouches[0].clientX;},{passive:true});
+    overlay.addEventListener('touchend',event=>{const distance=event.changedTouches[0].clientX-touchStartX;if(Math.abs(distance)>45&&slides().length>1)move(distance>0?-1:1);},{passive:true});
+    document.addEventListener('keydown',onKey);$('.lightbox-close',overlay).focus();
+  };
+  gallery.addEventListener('click',event=>{const image=event.target.closest('img');if(image)open($$('img',gallery).indexOf(image));});
+  gallery.addEventListener('keydown',event=>{const image=event.target.closest('img');if(image&&['Enter',' '].includes(event.key)){event.preventDefault();open($$('img',gallery).indexOf(image));}});
 }
 function toast(message) {
   document.body.insertAdjacentHTML('beforeend', `<div class="toast" role="status">${message}</div>`);

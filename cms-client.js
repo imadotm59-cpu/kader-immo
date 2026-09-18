@@ -99,7 +99,7 @@ function setBusy(form,busy) { cms.busy=busy;$$('button,input,select,textarea',fo
 function paint() {
   const route=currentRoute();
   app.innerHTML=route.startsWith('/admin')?adminDashboard():route==='/biens'||route==='/biens/prestige'?listings(false,route==='/biens/prestige'):route.startsWith('/bien/')?detail(route.split('/')[2]):route==='/agence'?agency():route==='/services'?services():route==='/contact'?contact():home();
-  bindGlobal();bindForms();bindListings();bindUnits();bindCMS();
+  bindGlobal();bindForms();bindListings();bindUnits();bindPropertyLightbox();bindCMS();
   $('.rich-text')?.setAttribute('aria-label','Description du bien');
   $('#global-search')?.setAttribute('aria-label','Rechercher dans tous les biens puis appuyer sur Entrée');
   $('#listing-search')?.setAttribute('aria-label','Rechercher des biens');
