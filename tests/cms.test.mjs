@@ -47,7 +47,8 @@ test('validates ordered apartment units and gallery-owned unit images',()=>{
   assert.deepEqual(result.data.units.map(unit=>unit.name),['A-01','A-02','A-03']);
   assert.equal(result.data.units[0].area,75);assert.equal(result.data.units[1].status,'Reserved');assert.deepEqual(result.data.units[0].imagePaths,[image]);
   assert.throws(()=>validateProperty({...draft,imagePaths:[image],units:[units[0],{...units[0]}]}),/unique unit names/);
-  assert.throws(()=>validateProperty({...draft,imagePaths:[image],units:[{...units[0],status:'Rented'}]}),/Invalid property option/);
+  assert.equal(validateProperty({...draft,transaction:'Rent',imagePaths:[image],units:[{...units[0],status:'Rented'}]}).data.units[0].status,'Rented');
+  assert.throws(()=>validateProperty({...draft,imagePaths:[image],units:[{...units[0],status:'Draft'}]}),/Invalid property option/);
   assert.throws(()=>validateProperty({...draft,units:[units[0]]}),/property gallery/);
   assert.equal(validateProperty({...draft,units:[{...units[1],price:''}]}).data.units[0].price,null);
 });
@@ -224,6 +225,19 @@ test('optional prices render as a request while numeric prices keep their format
   assert.match(appSource,/selectedUnit \? selectedUnit\.price : item\.price/);
   assert.match(client,/price:values\.price,/);
   assert.match(client,/Laisser vide si non défini/);
+});
+test('rental details are validated for every property type and category without changing sales',()=>{
+  for(const type of ['Apartment','Villa','Duplex','Penthouse'])for(const category of ['standard','prestige']){
+    const monthly=validateProperty({...draft,type,category,transaction:'Rent',price:'80 000',rentalPeriod:'month',minRentalMonths:'6'});
+    assert.equal(monthly.price,80000);assert.equal(monthly.data.transaction,'Rent');assert.equal(monthly.data.rentalPeriod,'month');assert.equal(monthly.data.minRentalMonths,6);
+    const annual=validateProperty({...draft,type,category,transaction:'Rent',price:'900 000',rentalPeriod:'year',minRentalMonths:''});
+    assert.equal(annual.data.rentalPeriod,'year');assert.equal(annual.data.minRentalMonths,null);
+  }
+  const sale=validateProperty({...draft,transaction:'Sale',rentalPeriod:'year',minRentalMonths:'6'});
+  assert.equal(sale.data.rentalPeriod,null);assert.equal(sale.data.minRentalMonths,null);
+  assert.equal(validateProperty({...draft,transaction:'Rent'}).data.rentalPeriod,'month');
+  for(const months of ['0','2.5','-1'])assert.throws(()=>validateProperty({...draft,transaction:'Rent',minRentalMonths:months}));
+  assert.throws(()=>validateProperty({...draft,transaction:'Rent',rentalPeriod:'week'}),/Invalid property option/);
 });
 test('SQL enables RLS and keeps admin provisioning owner-only',async()=>{
   const sql=await readFile(new URL('../supabase/migrations/001_cms.sql',import.meta.url),'utf8');

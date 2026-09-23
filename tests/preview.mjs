@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 const uid='22222222-2222-4222-8222-222222222222';
 const id='11111111-1111-4111-8111-111111111111';
 const idNoPrice='33333333-3333-4333-8333-333333333333';
+const idMonthly='55555555-5555-4555-8555-555555555555',idYearly='66666666-6666-4666-8666-666666666666';
 const stamp=()=>new Date().toISOString();
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aG7sAAAAASUVORK5CYII=','base64');
 const primaryImage=uid+'/'+id+'.png',secondImage=uid+'/44444444-4444-4444-8444-444444444444.png';
@@ -20,6 +21,8 @@ const combinationRows=[
 const rows=[
   {id,ref:'KIM-TEST-01',title:'Villa test à Canastel',price:65000000,status:'Available',published:true,archived:false,featured:true,images:[...files],data:{type:'Villa',category:'standard',transaction:'Sale',currency:'DA',location:'Canastel, Oran',area:480,beds:5,baths:4,description:'A local integration test listing.',features:['Pool','Custom test feature'],city:'Oran',neighborhood:'Canastel'},created_at:stamp(),updated_at:stamp()},
   {id:idNoPrice,ref:'KIM-TEST-02',title:'Résidence prestige sans prix',price:0,status:'Available',published:true,archived:false,featured:true,images:[primaryImage],data:{type:'Apartment',category:'prestige',transaction:'Sale',currency:'DA',location:'Akid Lotfi, Oran',area:90,beds:3,baths:2,description:'A no-price integration test listing.',features:['Elevator'],city:'Oran',neighborhood:'Akid Lotfi',units:[{name:'A-01',area:75,price:null,beds:2,floor:1,status:'Available',imagePaths:[]},{name:'A-02',area:90,price:22000000,beds:3,floor:2,status:'Available',imagePaths:[]}]},created_at:stamp(),updated_at:stamp()},
+  {id:idMonthly,ref:'KIM-RENT-01',title:'Appartement à louer à Oran',price:80000,status:'Available',published:true,archived:false,featured:false,images:[primaryImage],data:{type:'Apartment',category:'standard',transaction:'Rent',rentalPeriod:'month',minRentalMonths:6,currency:'DA',location:'Oran Centre, Oran',area:75,beds:2,baths:1,description:'A monthly rental integration test listing.',features:[],city:'Oran',neighborhood:'Oran Centre',units:[{name:'A-01',area:75,price:80000,beds:2,floor:1,status:'Available',imagePaths:[]},{name:'A-02',area:90,price:95000,beds:3,floor:2,status:'Available',imagePaths:[]},{name:'A-03',area:105,price:110000,beds:3,floor:3,status:'Rented',imagePaths:[]}]},created_at:stamp(),updated_at:stamp()},
+  {id:idYearly,ref:'KIM-RENT-02',title:'Villa prestige à louer',price:900000,status:'Available',published:true,archived:false,featured:false,images:[primaryImage],data:{type:'Villa',category:'prestige',transaction:'Rent',rentalPeriod:'year',minRentalMonths:null,currency:'DA',location:'Canastel, Oran',area:300,beds:4,baths:3,description:'A yearly rental integration test listing.',features:[],city:'Oran',neighborhood:'Canastel'},created_at:stamp(),updated_at:stamp()},
   ...combinationRows
 ];
 process.env.SUPABASE_URL='http://127.0.0.1:4189';

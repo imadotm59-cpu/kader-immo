@@ -44,11 +44,16 @@ export function validateProperty(input) {
     if (imagePaths.some(path => !images.includes(path))) throw new HttpError(400, 'Unit images must belong to the property gallery.');
     return { name:text(unit.name, 100, true), area:number(unit.area, 1e8, true), price:number(unit.price, 1e13, true),
       beds:number(unit.beds, 10000, true), floor:number(unit.floor, 10000, true),
-      status:choice(unit.status || 'Available', ['Available','Sold','Reserved']), imagePaths };
+      status:choice(unit.status || 'Available', ['Available','Sold','Rented','Reserved']), imagePaths };
   });
   if (new Set(units.map(unit => unit.name.toLocaleLowerCase())).size !== units.length) throw new HttpError(400, 'Use unique unit names.');
+  const transaction = choice(input.transaction || 'Sale', ['Sale','Rent']);
+  const minRentalMonths = transaction === 'Rent' ? number(input.minRentalMonths, 1200, true) : null;
+  if (minRentalMonths !== null && (!Number.isInteger(minRentalMonths) || minRentalMonths < 1)) throw new HttpError(400, 'Invalid minimum rental duration.');
   const data = {
-    type: choice(input.type || 'Villa', TYPES), transaction: choice(input.transaction || 'Sale', ['Sale','Rent']),
+    type: choice(input.type || 'Villa', TYPES), transaction,
+    rentalPeriod: transaction === 'Rent' ? choice(input.rentalPeriod || 'month', ['month','year']) : null,
+    minRentalMonths,
     category: choice(input.category || 'standard', ['standard','prestige']),
     currency: choice(input.currency || 'DA', ['DA','EUR','USD']), description: text(input.description, 20000),
     location: text(input.location || input.neighborhood || input.city, 300, published),
