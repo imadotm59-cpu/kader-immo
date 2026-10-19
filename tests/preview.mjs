@@ -10,6 +10,7 @@ const stamp=()=>new Date().toISOString();
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aG7sAAAAASUVORK5CYII=','base64');
 const primaryImage=uid+'/'+id+'.png',secondImage=uid+'/44444444-4444-4444-8444-444444444444.png';
 const files=new Set([primaryImage,secondImage]);
+const uploadedImages=new Map();
 const combinationRows=[
   ['KIM-TEST-03','Appartement Standard','Apartment','standard'],
   ['KIM-TEST-04','Villa Prestige','Villa','prestige'],
@@ -50,11 +51,11 @@ createServer(async(req,res)=>{
   }
   const sign='/storage/v1/object/sign/property-images/';
   if(url.pathname.startsWith(sign)){
-    if(req.method==='GET'){res.writeHead(200,{'Content-Type':'image/png'});res.end(png);return;}
+    if(req.method==='GET'){const image=uploadedImages.get(url.pathname.slice(sign.length));res.writeHead(200,{'Content-Type':image?.mime||'image/png'});res.end(image?.bytes||png);return;}
     const path=url.pathname.slice(sign.length);return files.has(path)?send({signedURL:'/object/sign/property-images/'+path+'?token=fixture'}):send({},404);
   }
   if(url.pathname==='/storage/v1/object/list/property-images')return send([...files].map(path=>({id:path,name:path.split('/')[1]})));
-  if(url.pathname.startsWith('/storage/v1/object/property-images/')){files.add(url.pathname.split('/property-images/')[1]);return send({});}
+  if(url.pathname.startsWith('/storage/v1/object/property-images/')){const path=url.pathname.split('/property-images/')[1];files.add(path);uploadedImages.set(path,{bytes:Buffer.concat(parts),mime:req.headers['content-type']});return send({});}
   if(url.pathname==='/storage/v1/object/property-images'){body.prefixes.forEach(path=>files.delete(path));return send({});}
   send({},404);
 }).listen(4189,'127.0.0.1',async()=>{await import('../scripts/dev.mjs');console.log('LOCAL TEST FIXTURE ONLY — admin@example.test / fixture-only-password');});

@@ -257,6 +257,20 @@ test('image upload creates a unique admin-owned path and signed URL',async()=>{
     assert.equal(result.code,201);assert.ok(result.data.path.startsWith(uid+'/'));assert.ok(uploaded.endsWith(result.data.path));assert.ok(result.data.url.startsWith('https://database.test/storage/v1/'));
   }finally{global.fetch=original;}
 });
+test('WebP upload preserves its bytes, MIME type and storage extension',async()=>{
+  environment();const original=global.fetch;
+  const bytes=Buffer.from('UklGRhIAAABXRUJQVlA4TAYAAAAvAAAAAAA=','base64');
+  mockAdmin(async(url,options)=>{
+    if(url.includes('/object/sign/'))return response({signedURL:'/object/sign/property-images/test.webp?token=short-lived'});
+    assert.match(url,/\/property-images\/[^/]+\/[^/]+\.webp$/);
+    assert.equal(options.headers['Content-Type'],'image/webp');assert.deepEqual(options.body,bytes);
+    return response({});
+  });
+  try{
+    const result=await run('upload','POST',{base64:bytes.toString('base64')},'kader_access=test');
+    assert.equal(result.code,201);assert.match(result.data.path,/\.webp$/);
+  }finally{global.fetch=original;}
+});
 test('cannot delete an image still referenced by any listing',async()=>{
   environment();const original=global.fetch;
   mockAdmin(async(url,options)=>{assert.notEqual(options.method,'DELETE');return response([{images:[image]}]);});

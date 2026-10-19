@@ -262,6 +262,37 @@ function collectEditor(form,mode='changes') {
     location:[values.neighborhood,values.city].filter(Boolean).join(', '), units:collectUnits(form),
     features:$$('.feature-token.selected',form).map(b=>b.dataset.feature),imagePaths:$$('#media-grid figure',form).map(f=>f.dataset.path)};
 }
+async function prepareListingImage(file) {
+  if(file.type==='image/webp'||file.type==='image/png')return file;
+  if(file.type!=='image/jpeg'&&!/\.jpe?g$/i.test(file.name))return file;
+  let image,objectUrl,canvas;
+  try {
+    // Decode EXIF orientation before drawing; dimensions follow the oriented image.
+    if(typeof createImageBitmap==='function') {
+      try { image=await createImageBitmap(file,{imageOrientation:'from-image'}); } catch { /* Use the browser image decoder below. */ }
+    }
+    if(!image){
+      objectUrl=URL.createObjectURL(file);image=new Image();image.src=objectUrl;
+      await image.decode();
+    }
+    const width=image.naturalWidth||image.width,height=image.naturalHeight||image.height;
+    if(!width||!height)throw new Error('Invalid image dimensions');
+    canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+    const context=canvas.getContext('2d');
+    if(!context)throw new Error('Canvas unavailable');
+    context.drawImage(image,0,0);
+    const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',0.85));
+    // Browsers without WebP encoding may silently return PNG. Never upload that as WebP.
+    if(!blob||blob.type!=='image/webp'||!blob.size)throw new Error('WebP encoding unavailable');
+    if(blob.size>2097152)throw new Error('La photo optimisée dépasse encore 2 Mo. Choisissez une version plus légère.');
+    return new File([blob],file.name.replace(/\.(jpe?g)$/i,'')+'.webp',{type:'image/webp',lastModified:file.lastModified});
+  } catch(error) {
+    throw new Error(error.message==='La photo optimisée dépasse encore 2 Mo. Choisissez une version plus légère.'?error.message:'Impossible d’optimiser cette photo en WebP. Vérifiez le fichier ou essayez un navigateur récent.');
+  } finally {
+    image?.close?.();if(objectUrl)URL.revokeObjectURL(objectUrl);
+    if(canvas){canvas.width=0;canvas.height=0;}
+  }
+}
 function readImage(file) {
   if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>2097152)throw new Error('Choisissez des images JPEG, PNG ou WebP de 2 Mo maximum chacune.');
   return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result.split(',')[1]);reader.onerror=()=>reject(new Error('Impossible de lire cette photo.'));reader.readAsDataURL(file);});
@@ -300,10 +331,24 @@ function bindEditor() {
   form.addEventListener('input',()=>cms.dirty=true);
   async function upload(files,replace){
     setBusy(form,true);
+    const status=$('.upload-tile span',media),originalStatus=status.textContent;
+    status.setAttribute('role','status');status.setAttribute('aria-live','polite');
     try{
       if($$('figure',media).length+files.length-(replace?1:0)>20)throw new Error('Vous pouvez ajouter au maximum 20 photos par bien.');
-      for(const file of files){const base64=await readImage(file),result=await api('upload','POST',{base64}),figure=mediaFigure(result.path,result.url);if(replace){replace.replaceWith(figure);replace=null;}else media.insertBefore(figure,$('.upload-tile',media));cms.dirty=true;renumber();}
-    }catch(error){formError(form,error);}finally{setBusy(form,false);uploader.value='';}
+      const failures=[];
+      for(const file of files){
+        try{
+          status.textContent='Optimisation de l’image…';
+          const prepared=await prepareListingImage(file),base64=await readImage(prepared);
+          status.textContent='Envoi de la photo…';
+          const result=await api('upload','POST',{base64}),figure=mediaFigure(result.path,result.url);
+          if(replace){replace.replaceWith(figure);replace=null;}else media.insertBefore(figure,$('.upload-tile',media));
+          cms.dirty=true;renumber();
+        }catch(error){failures.push(`${file.name} : ${error.message}`);}
+      }
+      if(failures.length)formError(form,new Error(failures.join('\n')));
+      else $('.cms-error',form)?.remove();
+    }catch(error){formError(form,error);}finally{status.textContent=originalStatus;setBusy(form,false);uploader.value='';}
   }
   uploader.onchange=()=>upload([...uploader.files]);
   media.onclick=event=>{
