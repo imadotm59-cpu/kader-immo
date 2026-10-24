@@ -1,5 +1,5 @@
 // The browser never receives an Auth token. The API owns HttpOnly session cookies.
-const cms = { items:[], user:null, generation:0, dirty:false, busy:false, search:'' };
+const cms = { items:[], user:null, generation:0, dirty:false, busy:false, search:'', covers:new Map(), coverRequests:new Map(), details:new Map(), refreshing:false, coverObserver:null };
 function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 const cmsMessageTranslations = {
   'Publishing requires a location, area, description and cover image.':'La publication nécessite une localisation, une surface, une description et une photo de couverture.',
@@ -78,16 +78,71 @@ function revealContent() {
 }
 // Serialize API calls to avoid concurrent refresh-token rotation in this tab.
 let apiQueue=Promise.resolve();
-function api(action, method='GET', body) {
+function api(action, method='GET', body, parameters={}) {
   const request=async()=>{
     let response;
-    try { response=await fetch('/api/cms?action='+encodeURIComponent(action),{method,credentials:'same-origin',cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(60000)}); }
+    try { response=await fetch('/api/cms?'+new URLSearchParams({action,...parameters}),{method,credentials:'same-origin',cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(60000)}); }
     catch { throw new Error('La connexion a échoué. Vos modifications n’ont pas été confirmées. Veuillez réessayer.'); }
     const result=await response.json().catch(()=>({error:'Réponse inattendue du serveur.'}));
     if(!response.ok) { const error=new Error(cmsMessage(result.error || 'La requête a échoué.'));error.status=response.status;throw error; }
     return result;
   };
   const pending=apiQueue.then(request,request); apiQueue=pending.catch(()=>{});return pending;
+}
+function freshImage(entry){return entry&&entry.expiresAt>Date.now()+120000;}
+function cachedCover(item){const entry=cms.covers.get(item.id);return freshImage(entry)&&entry.path===item.imagePaths?.[0]?entry:null;}
+async function requestCovers(items){
+  const missing=items.filter(item=>!cachedCover(item)&&!cms.coverRequests.has(item.id));
+  for(let offset=0;offset<missing.length;offset+=50){
+    const batch=missing.slice(offset,offset+50),request=api('covers','GET',undefined,{ids:batch.map(item=>item.id).join(',')}).then(result=>{
+      for(const cover of result.covers)if(cover.url)cms.covers.set(cover.id,cover);
+    });
+    batch.forEach(item=>cms.coverRequests.set(item.id,request));
+    request.finally(()=>batch.forEach(item=>cms.coverRequests.delete(item.id))).catch(()=>{});
+  }
+  await Promise.all([...new Set(items.map(item=>cms.coverRequests.get(item.id)).filter(Boolean))]);
+}
+function bindCoverImages(){
+  cms.coverObserver?.disconnect();
+  const images=$$('img[data-property-cover]',app);
+  const load=async candidates=>{
+    candidates=candidates.filter(image=>image.isConnected);
+    if(!candidates.length)return;
+    const items=candidates.map(image=>cms.items.find(item=>item.id===image.dataset.propertyCover)).filter(Boolean);
+    try{
+      await requestCovers(items);
+      for(const image of candidates){
+        const item=cms.items.find(item=>item.id===image.dataset.propertyCover),entry=item&&cachedCover(item);
+        if(image.isConnected&&entry){if(image.getAttribute('src')!==entry.url)image.src=entry.url;item.image=entry.url;}
+      }
+    }catch(error){console.warn('listing-cover-load-failed',{cause:error.message});}
+  };
+  const pending=[];
+  for(const image of images){
+    const item=cms.items.find(item=>item.id===image.dataset.propertyCover),entry=item&&cachedCover(item);
+    if(entry){if(image.getAttribute('src')!==entry.url)image.src=entry.url;}
+    else pending.push(image);
+  }
+  if(!pending.length)return;
+  if(!('IntersectionObserver' in window)){load(pending);return;}
+  cms.coverObserver=new IntersectionObserver(entries=>{
+    const visible=entries.filter(entry=>entry.isIntersecting).map(entry=>entry.target);
+    visible.forEach(image=>cms.coverObserver?.unobserve(image));if(visible.length)load(visible);
+  },{rootMargin:'0px'});
+  pending.forEach(image=>cms.coverObserver.observe(image));
+}
+async function publicItems(items,route){
+  const result=items.map(item=>{const cover=cachedCover(item);return {...item,image:cover?.url||'',images:cover?[cover.url]:[]};});
+  if(!route.startsWith('/bien/'))return result;
+  const id=route.split('/')[2],summary=result.find(item=>item.id===id);if(!summary){cms.details.delete(id);return result;}
+  let detail=cms.details.get(id);
+  if(!detail||detail.updatedAt!==summary.updatedAt||!freshImage({expiresAt:detail.imageExpiresAt})){
+    try{detail=(await api('property','GET',undefined,{id})).property;}
+    catch(error){if(error.status===404)return result.filter(item=>item.id!==id);throw error;}
+    cms.details.set(id,detail);
+    if(detail.image&&detail.imagePaths[0])cms.covers.set(id,{id,path:detail.imagePaths[0],url:detail.image,expiresAt:detail.imageExpiresAt});
+  }
+  return result.map(item=>item.id===id?detail:item);
 }
 function message(text) { toast(escapeHtml(text)); }
 function formError(form,error) {
@@ -108,11 +163,13 @@ function paint() {
   // Existing form design uses adjacent labels. Associate them without changing layout.
   $$('.field',app).forEach((field,i)=>{const input=$('input,textarea',field),label=$('label',field);if(input&&label){input.id||='field-'+i;label.htmlFor=input.id;}});
   $$('button[title]',app).forEach(b=>b.setAttribute('aria-label',b.title));
-  $$('img',app).forEach(img=>{if(!img.getAttribute('src')){img.removeAttribute('src');img.alt='Aucune photo';img.classList.add('cms-image-empty');}});
+  $$('img',app).forEach(img=>{if(!img.getAttribute('src')&&!img.dataset.propertyCover){img.removeAttribute('src');img.alt='Aucune photo';img.classList.add('cms-image-empty');}});
+  bindCoverImages();
   revealContent();
 }
 async function render() {
   const turn=++cms.generation, route=currentRoute(),admin=route.startsWith('/admin');
+  cms.coverObserver?.disconnect();
   document.body.classList.toggle('detail-route',route.startsWith('/bien/'));
   cms.dirty=false;
   app.classList.remove('cms-reveal');
@@ -125,7 +182,9 @@ async function render() {
     }
     const result=await api(admin?'properties':'public');
     if(turn!==cms.generation)return;
-    cms.items=result.properties;paint();
+    const items=admin?result.properties:await publicItems(result.properties,route);
+    if(turn!==cms.generation)return;
+    cms.items=items;paint();
   } catch(error) {
     if(turn!==cms.generation)return;
     cms.items=[];
@@ -439,29 +498,34 @@ document.addEventListener('keydown',event=>{if((event.metaKey||event.ctrlKey)&&e
 document.addEventListener('click',async event=>{const a=event.target.closest('a[href]');if(cms.busy&&a){event.preventDefault();message('Veuillez attendre la fin de l’opération en cours.');return;}if(cms.dirty&&a&&a.hash!==location.hash){event.preventDefault();if(await confirmAction('Abandonner les modifications non enregistrées ? Les photos ajoutées mais inutilisées pourront être supprimées depuis la médiathèque.')){cms.dirty=false;location.href=a.href;}}},true);
 window.addEventListener('beforeunload',event=>{if(cms.dirty||cms.busy){event.preventDefault();event.returnValue='';}});
 window.addEventListener('hashchange',()=>{window.scrollTo(0,0);render();});
-// Every visitor reads shared data; open public pages revalidate periodically.
-setInterval(async()=>{
-  if(document.hidden||currentRoute().startsWith('/admin')||document.activeElement?.matches('input,textarea,select'))return;
-    const turn=cms.generation;
-    try{
-      const {properties:items}=await api('public');if(turn!==cms.generation)return;
-      $('#cms-refresh-error')?.remove();
-      const changed=JSON.stringify(items.map(p=>[p.id,p.updatedAt]))!==JSON.stringify(cms.items.map(p=>[p.id,p.updatedAt]));
-      // Renew URLs without rebuilding the page or clearing filters/contact input.
+// Preserve live listing updates without re-signing galleries every thirty seconds.
+async function refreshPublicProperties(){
+  const route=currentRoute();
+  if(cms.refreshing||document.hidden||!(['/', '/biens', '/biens/prestige'].includes(route)||route.startsWith('/bien/'))||document.activeElement?.matches('input,textarea,select'))return;
+  cms.refreshing=true;const turn=cms.generation;
+  try{
+    const {properties:summaries}=await api('public');if(turn!==cms.generation)return;
+    const changed=JSON.stringify(summaries.map(p=>[p.id,p.updatedAt]))!==JSON.stringify(cms.items.map(p=>[p.id,p.updatedAt]));
+    const items=await publicItems(summaries,route);if(turn!==cms.generation)return;
+    $('#cms-refresh-error')?.remove();
+    if(!changed){
+      // Only expiring URLs for the open property can change here. A normal poll
+      // leaves every img src (and the browser's image cache) untouched.
       const urls=new Map();
-      for(const old of cms.items){const next=items.find(p=>p.id===old.id);if(next)old.imagePaths.forEach((path,i)=>{const j=next.imagePaths.indexOf(path);if(j>=0&&old.images[i])urls.set(old.images[i],next.images[j]);});}
-      $$('img',app).forEach(img=>{const next=urls.get(img.src);if(next)img.src=next;});
-      cms.items=items;
-      const route=currentRoute();
-      if(changed&&(route==='/'||route==='/biens'||route==='/biens/prestige'||route.startsWith('/bien/'))){
-        const search=$('#property-search')?.value,filter=$('.filter.active')?.dataset.filter;
-        const contactValues=$$('.validate-form input,.validate-form textarea',app).map(el=>[el.name,el.value]);
-        const y=scrollY;paint();
-        if(search!=null){$('#property-search').value=search;$('#property-search').dispatchEvent(new Event('input'));$$('.filter').find(b=>b.dataset.filter===filter)?.click();}
-        contactValues.forEach(([name,value])=>{const el=$$('.validate-form input,.validate-form textarea',app).find(e=>e.name===name);if(el)el.value=value;});
-        scrollTo(0,y);
-      }
+      for(const old of cms.items){const next=items.find(p=>p.id===old.id);if(next)old.imagePaths.forEach((path,i)=>{const j=next.imagePaths.indexOf(path);if(j>=0&&old.images[i]&&next.images[j])urls.set(old.images[i],next.images[j]);});}
+      $$('img',document).forEach(img=>{const next=urls.get(img.getAttribute('src'));if(next&&img.getAttribute('src')!==next)img.src=next;});
     }
-  catch{if(!$('#cms-refresh-error')){const p=document.createElement('p');p.id='cms-refresh-error';p.className='cms-refresh-error';p.setAttribute('role','status');p.textContent='La mise à jour des biens a échoué. Nouvelle tentative automatique.';app.prepend(p);}}
-},30000);
+    cms.items=items;
+    if(changed){
+      const search=$('#property-search')?.value,filters=$$('[data-type].active,[data-category].active,[data-transaction].active',app).map(button=>({key:['type','category','transaction'].find(key=>button.dataset[key]!==undefined),value:button.dataset.type??button.dataset.category??button.dataset.transaction}));
+      const contactValues=$$('.validate-form input,.validate-form textarea',app).map(el=>[el.name,el.value]);
+      const y=scrollY;paint();
+      if(search!=null){$('#property-search').value=search;$('#property-search').dispatchEvent(new Event('input'));for(const filter of filters)$$('[data-'+filter.key+']',app).find(button=>button.dataset[filter.key]===filter.value)?.click();}
+      contactValues.forEach(([name,value])=>{const el=$$('.validate-form input,.validate-form textarea',app).find(e=>e.name===name);if(el)el.value=value;});
+      scrollTo(0,y);
+    }else bindCoverImages();
+  }catch{if(turn===cms.generation&&!$('#cms-refresh-error')){const p=document.createElement('p');p.id='cms-refresh-error';p.className='cms-refresh-error';p.setAttribute('role','status');p.textContent='La mise à jour des biens a échoué. Nouvelle tentative automatique.';app.prepend(p);}}
+  finally{cms.refreshing=false;}
+}
+setInterval(refreshPublicProperties,30000);
 render();

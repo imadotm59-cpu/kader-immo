@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { adminSession, checkOrigin, setSession, supabase, config } from '../server/supabase.js';
 import { HttpError, uuid, imagePath, validateProperty, validateUpload } from '../server/validation.js';
+import { publicImage } from '../server/public-images.js';
 
 async function rows(token, publicOnly = false) {
   const all = [];
@@ -14,13 +15,24 @@ async function signed(path, token) {
   const result = await supabase(`/storage/v1/object/sign/property-images/${path}`, { token, method:'POST', body:{ expiresIn:3600 } });
   return config().url + '/storage/v1' + result.signedURL;
 }
-async function present(items, token) {
+async function present(items, token, scope='all') {
+  // Bound storage requests across the entire page instead of signing hundreds at once.
+  const selected=item=>scope==='none'?[]:scope==='cover'?item.images.slice(0,1):item.images;
+  const paths=[...new Set(items.flatMap(selected))],urls=new Map(),expiries=[];let cursor=0;
+  await Promise.all(Array.from({length:Math.min(6,paths.length)},async()=>{
+    while(cursor<paths.length){const path=paths[cursor++];try{
+      if(scope==='gallery'||scope==='cover'){const result=await publicImage(path);urls.set(path,result.url);expiries.push(result.expiresAt);}
+      else urls.set(path,await signed(path,token));
+    }catch(error){console.error('listing-photo-url-failed',{path,cause:error.message});urls.set(path,'');}}
+  }));
   return Promise.all(items.map(async item => {
-    const images = await Promise.all(item.images.map(async path => { try { return await signed(path, token); } catch { return ''; } }));
+    const imagePaths=scope==='none'||scope==='cover'?item.images.slice(0,1):item.images;
+    const images = scope==='none'?[]:imagePaths.map(path=>urls.get(path)||'');
     const units = (Array.isArray(item.data.units) ? item.data.units : []).map(unit => ({...unit,
-      imagePaths:Array.isArray(unit.imagePaths) ? unit.imagePaths : [],
-      images:(Array.isArray(unit.imagePaths) ? unit.imagePaths : []).map(path => images[item.images.indexOf(path)]).filter(Boolean) }));
-    return { ...item.data, ...item, data:undefined, category:item.data.category === 'prestige' ? 'prestige' : 'standard', units, imagePaths:item.images, images, image:images[0] || '',
+      imagePaths:scope==='none'||scope==='cover'?[]:Array.isArray(unit.imagePaths) ? unit.imagePaths : [],
+      images:scope==='none'||scope==='cover'?[]:(Array.isArray(unit.imagePaths) ? unit.imagePaths : []).map(path => images[item.images.indexOf(path)]).filter(Boolean) }));
+    return { ...item.data, ...item, data:undefined, category:item.data.category === 'prestige' ? 'prestige' : 'standard', units, imagePaths, images, image:images[0] || '',
+      ...(['gallery','cover'].includes(scope)?{imageExpiresAt:images.some(url=>!url)?0:Math.min(Date.now()+3600000,...expiries)}:{}),
       area:item.data.area == null ? '' : String(item.data.area), price:Number(item.price) > 0 ? String(item.price) : '',
       createdAt:item.created_at, updatedAt:item.updated_at, publishedAt:item.published_at };
   }));
@@ -51,7 +63,22 @@ export default async function handler(req, res) {
       setSession(res,session);
       return res.status(200).json({ user:{ email:session.user.email } });
     }
-    if (action === 'public' && req.method === 'GET') return res.status(200).json({ properties:await present(await rows(undefined,true)) });
+    // Public metadata refreshes never sign photos. Image requests are route-scoped.
+    if (action === 'public' && req.method === 'GET') return res.status(200).json({ properties:await present(await rows(undefined,true),undefined,'none') });
+    if (action === 'covers' && req.method === 'GET') {
+      const source=req.query?.ids;
+      if(typeof source!=='string'||!source||source.split(',').length>50)throw new HttpError(400,'Invalid property ID.');
+      const ids=[...new Set(source.split(',').map(uuid))];
+      const items=await supabase(`/rest/v1/properties?select=*&id=in.(${ids.join(',')})&published=eq.true&archived=eq.false`);
+      const covers=await present(items,undefined,'cover');
+      return res.status(200).json({covers:covers.map(item=>({id:item.id,path:item.imagePaths[0]||'',url:item.image,expiresAt:item.imageExpiresAt}))});
+    }
+    if (action === 'property' && req.method === 'GET') {
+      const id=uuid(req.query?.id);
+      const items=await supabase(`/rest/v1/properties?select=*&id=eq.${id}&published=eq.true&archived=eq.false`);
+      if(!items.length)throw new HttpError(404,'Property not found.');
+      return res.status(200).json({property:(await present(items,undefined,'gallery'))[0]});
+    }
     // Clear local credentials even if the provider session has already expired.
     if(action === 'logout' && req.method === 'POST') {
       try {const {token}=await adminSession(req,res);await supabase('/auth/v1/logout?scope=local',{token,method:'POST'});}
